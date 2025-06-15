@@ -255,6 +255,7 @@ class Game:
 
         if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
             self.next_level()
+            self.score += 500
 
 
     def draw(self):

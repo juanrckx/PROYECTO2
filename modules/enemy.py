@@ -65,7 +65,7 @@ class Enemy:
         self.health -= 1
         if self.health <= 0:
             self.state = "dead"
-            Game.
+
 
     def draw(self, surface):
         if self.state != "dead":
