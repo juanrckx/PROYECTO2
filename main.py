@@ -152,32 +152,30 @@ class Game:
         ]
 
     def next_level(self):
-        if self.current_level_index < len(self.levels) - 1:
-            self.current_level_index += 1
-
-            current_level = self.levels[self.current_level_index]
-            current_level.__init__(current_level.number, current_level.difficulty)
-
-            # Reposicionar al jugador y resetear bombas
-            self.player.rect.x = TILE_SIZE
-            self.player.rect.y = TILE_SIZE
-            self.player.hitbox.x = self.player.rect.x + 5
-            self.player.hitbox.y = self.player.rect.y + 5
-
-            self.player.available_bombs = self.player.bomb_capacity  # Resetear bombas
-            self.player.key_collected = False
-            self.player.invincible = False
-            self.player.visible = True
-
-            self.ensure_starting_position()
-            self.ensure_door_access()
-
-
-            return True
-
-        else:
+        if self.current_level_index >= len(self.levels) - 1:
             self.state = GameState.VICTORY
             return False
+
+        self.current_level_index += 1
+
+        current_level = self.levels[self.current_level_index]
+        current_level.__init__(current_level.number, current_level.difficulty)
+
+            # Reposicionar al jugador y resetear bombas
+        self.player.rect.x = TILE_SIZE
+        self.player.rect.y = TILE_SIZE
+        self.player.hitbox.x = self.player.rect.x + 5
+        self.player.hitbox.y = self.player.rect.y + 5
+
+        self.player.available_bombs = self.player.bomb_capacity  # Resetear bombas
+        self.player.key_collected = False
+        self.player.invincible = False
+        self.player.visible = True
+
+        self.ensure_starting_position()
+        Level.ensure_door_access(self.levels[self.current_level_index])
+
+        return True
 
     def handle_events(self):
         mouse_pos = pygame.mouse.get_pos()

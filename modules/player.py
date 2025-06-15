@@ -1,5 +1,5 @@
 import pygame
-from modules.utils import GameState, Difficulty, GREEN, RED, GRAY, BLUE, BLACK, BROWN, YELLOW, ORANGE, HEIGHT, WIDTH, TILE_SIZE, FPS
+from modules.utils import RED, TILE_SIZE
 from modules.bomb import Bomb
 
 class Player:
@@ -21,7 +21,7 @@ class Player:
 
         self.invincible = False
         self.invincible_frames = 0
-        self.invincible_duration = 140  # Duración de invincibilidad (segundos)
+        self.invincible_duration = 140  # Duración de invincibilidad (frames)
         self.visible = True
 
 
@@ -46,17 +46,11 @@ class Player:
                 self.hitbox.y = new_hitbox.y
                 self.rect.y = self.hitbox.y - 5
 
-    def check_collision(self, rect, game_map, enemies, bombs):
+    def check_collision(self, rect, game_map):
         for block in game_map:
             if not block.destroyed and block.rect.colliderect(rect):
                 return True
         return False
-    
-        for enemy in enemies:
-            if (enemy.state != "dead" and self.hitbox.colliderect(enemy.rect) and
-            not self.invincible):
-                if self.take_damage():
-                    break
 
     def place_bomb(self):
         if self.available_bombs > 0:

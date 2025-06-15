@@ -83,6 +83,7 @@ class Level:
                                 b.rect.y == path_y * TILE_SIZE)
                     ]
 
+
                     # 50% de probabilidad de ser destructible
                     is_destructible = random.choice([True, False])
                     self.map.append(Block(path_x, path_y, destructible=is_destructible))
