@@ -1,21 +1,12 @@
-import pygame
 import sys
 
-from modules.door import Door
-from modules.player import Player
+import pygame
+
 from modules.button import Button
 from modules.level import Level
+from modules.player import Player
 from modules.utils import GameState, Difficulty, GREEN, RED, BLUE, BLACK, HEIGHT, WIDTH, TILE_SIZE, FPS, WHITE
-
 '''
-Movimiento del personaje
-Estadisticas YA
-Personajes mas o menos
-Explosivos y Obstaculos YA
-Mostrar vida YA
-Enemigos varios YA
-Niveles YA
-Invulnerabilidad al recibir daño mas o menos YA
 
 Boss Fight
 #Bomb Lord:
@@ -37,8 +28,6 @@ Ambientacion
 
 Bloques destructibles e indestructibles YA
 Llave Oculta en un bloque destructible YA
-Puerta arreglar
-Progresión arreglar
 Mejora de una estadistica al terminar un nivel
 Dificultad 
 
@@ -61,10 +50,6 @@ class Items:
 
 Pantalla de Inicio #YA
 Pantalla de configuraciones
-Pantalla de personalizacion
-Juego que muestra la vida, puntos acumulados, tiempo transcurrido y numero de bombas restantes
-Mostrar tambien si ya tiene la llave o no YA
-Pantalla final con todos los puntos, duracion total y si perdio o ganó YA
 Pantalla con los mejores puntajes
 Pantalla de información
 '''
@@ -119,6 +104,7 @@ class Game:
             Level(2, Difficulty.MEDIUM),
             Level(3, Difficulty.HARD)]
         self.current_level_index = 0
+
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
             self.player = Player(1, 1, 3, 3, BLUE, 99)
@@ -127,7 +113,6 @@ class Game:
         elif character_type == 2:  # Pyro
             self.player = Player(1, 1, 2, 5, RED, 4)
 
-        self.current_level_index = 0
         self.ensure_starting_position()
         self.score = 0
         self.start_time = pygame.time.get_ticks()
@@ -167,14 +152,11 @@ class Game:
         self.player.hitbox.x = self.player.rect.x + 5
         self.player.hitbox.y = self.player.rect.y + 5
 
-        self.player.available_bombs = self.player.bomb_capacity  # Resetear bombas
         self.player.key_collected = False
         self.player.invincible = False
         self.player.visible = True
 
         self.ensure_starting_position()
-        Level.ensure_door_access(self.levels[self.current_level_index])
-
         return True
 
     def handle_events(self):
@@ -248,9 +230,9 @@ class Game:
                 if self.player.take_damage():
                     self.player.update_invincibility()
 
-                if self.player.lives <= 0:
-                    self.state = GameState.GAME_OVER
-                    return
+            if self.player.lives <= 0:
+                self.state = GameState.GAME_OVER
+                return
 
             # Verificar colisión con explosiones
         for bomb in self.player.bombs[:]:
@@ -259,6 +241,8 @@ class Game:
                     if (self.player.hitbox.colliderect(exp_rect) and
                             not self.player.invincible):
                         self.player.take_damage()
+                        if self.player.take_damage():
+                            self.player.update_invincibility()
                         break
 
         current_level = self.levels[self.current_level_index]
@@ -271,8 +255,7 @@ class Game:
 
         if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
             self.next_level()
-        if not self.next_level():
-            self.state = GameState.VICTORY
+
 
     def draw(self):
         window.fill(BLACK)

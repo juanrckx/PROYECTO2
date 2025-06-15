@@ -49,6 +49,8 @@ class Level:
                 self.map = [b for b in self.map if not (b.rect.x == j * TILE_SIZE and b.rect.y == k * TILE_SIZE)]
 
         self.ensure_door_access()
+        self.create_path_to_door(self.door_block_position, self.door_block_position)
+
 
     def ensure_door_access(self):
         """Garantiza que haya al menos un camino a la puerta"""
@@ -127,7 +129,7 @@ class Level:
 
     def create_path_to_door(self, door_x, door_y):
         # Crear un camino de 3 bloques hacia la puerta
-        global directions
+        directions = []
         if door_x == 0:  # Puerta izquierda
             directions = [(1, 0)]
         elif door_x == 19:  # Puerta derecha

@@ -1,6 +1,7 @@
 import pygame
 from modules.utils import GameState, Difficulty, GREEN, RED, GRAY, BLUE, BLACK, BROWN, YELLOW, ORANGE, HEIGHT, WIDTH, TILE_SIZE, FPS
 import random
+from main import Game
 
 class Enemy:
     def __init__(self, x, y, enemy_type):
@@ -64,6 +65,7 @@ class Enemy:
         self.health -= 1
         if self.health <= 0:
             self.state = "dead"
+            Game.
 
     def draw(self, surface):
         if self.state != "dead":
