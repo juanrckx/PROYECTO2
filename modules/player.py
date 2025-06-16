@@ -3,7 +3,7 @@ from modules.utils import RED, TILE_SIZE
 from modules.bomb import Bomb
 
 class Player:
-    def __init__(self, x, y, lives, speed, color, bomb_capacity):
+    def __init__(self, x, y, lives, speed, color, item, bomb_capacity):
         self.rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
         self.hitbox = pygame.Rect(
             x * TILE_SIZE + 5, y * TILE_SIZE + 5,
@@ -12,6 +12,7 @@ class Player:
         self.lives = lives
         self.speed = speed  # Aumentada la velocidad base
         self.color = color
+        self.item = item
 
         self.bombs = []
         self.bomb_capacity = bomb_capacity
@@ -52,7 +53,7 @@ class Player:
                 return True
         return False
 
-    def place_bomb(self):
+    def player_place_bomb(self):
         if self.available_bombs > 0:
             grid_x = self.rect.centerx // TILE_SIZE
             grid_y = self.rect.centery // TILE_SIZE

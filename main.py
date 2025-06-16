@@ -77,7 +77,8 @@ class Game:
         self.levels = [
             Level(1, Difficulty.EASY),
             Level(2, Difficulty.MEDIUM),
-            Level(3, Difficulty.HARD)
+            Level(3, Difficulty.HARD),
+            Level(4, Difficulty.FINAL_BOSS)
         ]
         self.current_level_index = 0
         self.player = None
@@ -114,16 +115,19 @@ class Game:
         self.levels = [
             Level(1, Difficulty.EASY),
             Level(2, Difficulty.MEDIUM),
-            Level(3, Difficulty.HARD)]
+            Level(3, Difficulty.HARD),
+            Level(4, Difficulty.FINAL_BOSS)]
         self.current_level_index = 0
 
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(1, 1, 3, 3, BLUE, 99)
+            self.player = Player(1, 1, 3, 3, BLUE, 3)
         elif character_type == 1:  # Tanky
             self.player = Player(1, 1, 5, 2, GREEN, 2)
         elif character_type == 2:  # Pyro
             self.player = Player(1, 1, 2, 5, RED, 4)
+        elif character_type == 3:
+            self.player = Player(1, 1, 2, 4, WHITE, 2)
 
         self.ensure_starting_position()
         self.score = 0
@@ -185,7 +189,7 @@ class Game:
 
             if event.type == pygame.KEYDOWN:
                 if self.state == GameState.GAME and event.key == pygame.K_e:
-                    self.player.place_bomb()
+                    self.player.player_place_bomb()
                 elif event.key == pygame.K_ESCAPE:
                     self.state = GameState.MENU
                 if event.key == pygame.K_f:
