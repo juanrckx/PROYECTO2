@@ -217,15 +217,21 @@ class Level:
             if not blocked and not enemy_near:
                 return x, y
 
+    def generate_powerup(self, x, y):
+        powerup = Powerup(x, y)
+        self.powerups.append(powerup)
+        print(f"[DEBUG] Powerup generado: {powerup.type.name} en ({x}, {y})")
+
     def check_bomb_collisions(self, bomb, player):
+        if not bomb.exploded:
+            return
         # Destruir bloques
         for block in self.map:
             if block.destructible and not block.destroyed:
                 for exp_rect in bomb.explosion_rects:
                     if block.rect.colliderect(exp_rect) and random.random() <= 0.5:
                         block.destroyed = True
-                        powerup = Powerup(block.rect.x, block.rect.y)
-                        self.powerups.append(powerup)
+                        self.generate_powerup(block.rect.x // TILE_SIZE, block.rect.y // TILE_SIZE)
                         if block.has_key and not block.revealed_key:
                             block.revealed_key = True
                             self.key.rect.x = block.rect.x
