@@ -106,14 +106,18 @@ class Game:
                 "TANKY", GREEN, (100, 255, 100)),
             Button(
                 3 * WIDTH // 4 - 75, HEIGHT // 2 + 100, 150, 50,
-                "PYRO", (255, 0, 0), (255, 100, 100))
-        ]
+                "PYRO", (255, 0, 0), (255, 100, 100))]
+            #Button(
+                #3 * WIDTH // 4 - 75, HEIGHT // 2 + 100, 150, 50,
+                #"CLERIC", (255, 0, 0), (255, 100, 100))
+        #]
 
         # Textos descriptivos de personajes
         self.character_descriptions = [
             ["Vida: 3", "Velocidad: 3", "Bombas: 3"],
             ["Vida: 5", "Velocidad: 2", "Bombas: 2"],
-            ["Vida: 2", "Velocidad: 4", "Bombas: 4"]
+            ["Vida: 2", "Velocidad: 4", "Bombas: 4"],
+            #["Vida: 2", "Velocidad: 2", "Bombas: 2"]
         ]
 
     def start_game(self, character_type):
@@ -126,13 +130,13 @@ class Game:
 
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(1, 1, 3, 3, BLUE, 3)
+            self.player = Player(1, 1, 3, 3, BLUE, 3, 0)
         elif character_type == 1:  # Tanky
-            self.player = Player(1, 1, 5, 2, GREEN, 2)
+            self.player = Player(1, 1, 5, 2, GREEN, 2, 1)
         elif character_type == 2:  # Pyro
-            self.player = Player(1, 1, 2, 5, RED, 4)
+            self.player = Player(1, 1, 2, 5, RED, 4, 2)
         elif character_type == 3:
-            self.player = Player(1, 1, 2, 4, WHITE, 2)
+            self.player = Player(1, 1, 2, 4, WHITE, 2, 3)
 
         self.ensure_starting_position()
         self.score = 0

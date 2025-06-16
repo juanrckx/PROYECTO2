@@ -2,53 +2,54 @@ import pygame
 from modules.utils import ORANGE, TILE_SIZE, FPS
 
 class Bomb:
-    def __init__(self, x, y, timer=3, bomb_range=1):  # Reducido el rango de explosión
+    def __init__(self, x, y, player, timer=3, bomb_range=1):  # Reducido el rango de explosión
         self.rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
         self.timer = timer * FPS  # Convertir segundos a frames
         self.range = bomb_range
         self.exploded = False
         self.explosion_timer = 30
         self.explosion_rects = []
+        self.player = player
 
     def update(self):
         if not self.exploded:
             self.timer -= 1
             if self.timer <= 0:
-                self.explode()
+                self.explode(self.player)
         else:
             self.explosion_timer -= 1
         return self.explosion_timer <= 0
 
-    def explode(self):
+    def explode(self, player):
         self.exploded = True
         self.explosion_rects = [self.rect]
+        explosion_type = player.get_explosion_pattern()
 
         # Explosión en forma de cruz con rango limitado
         for i in range(1, self.range + 1):
-            # Derecha
-            self.explosion_rects.append(pygame.Rect(
-                self.rect.x + i * TILE_SIZE,
-                self.rect.y,
-                TILE_SIZE, TILE_SIZE
-            ))
-            # Izquierda
-            self.explosion_rects.append(pygame.Rect(
-                self.rect.x - i * TILE_SIZE,
-                self.rect.y,
-                TILE_SIZE, TILE_SIZE
-            ))
-            # Arriba
-            self.explosion_rects.append(pygame.Rect(
-                self.rect.x,
-                self.rect.y - i * TILE_SIZE,
-                TILE_SIZE, TILE_SIZE
-            ))
-            # Abajo
-            self.explosion_rects.append(pygame.Rect(
-                self.rect.x,
-                self.rect.y + i * TILE_SIZE,
-                TILE_SIZE, TILE_SIZE
-            ))
+            directions = [
+                    (i, 0),  # Derecha
+                    (-i, 0),  # Izquierda
+                    (0, i),  # Abajo
+                    (0, -i),  # Arriba
+                ]
+
+            if explosion_type == "diamond":
+                directions.extend([
+                    (i - 1, i - 1),  # Diagonal inferior derecha
+                    (-(i - 1), i - 1),  # Diagonal inferior izquierda
+                    (i - 1, -(i - 1)),  # Diagonal superior derecha
+                    (-(i - 1), -(i - 1))  # Diagonal superior izquierda
+                    ])
+
+            for dx, dy in directions:
+                new_rect = pygame.Rect(
+                    self.rect.x + dx * TILE_SIZE,
+                    self.rect.y + dy * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+                if new_rect not in self.explosion_rects:  # Evita duplicados
+                    self.explosion_rects.append(new_rect)
+
+
 
 
     def draw(self, surface):
