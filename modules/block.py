@@ -14,7 +14,7 @@ class Block:
             self.texture.fill(GRAY)
 
         else:
-            self.texture = pygame.image.load("assets/materials/brick_material.png").convert_alpha()
+            self.texture = pygame.image.load("assets/textures/materials/brick_material.png").convert_alpha()
             self.texture = pygame.transform.scale(self.texture, (TILE_SIZE, TILE_SIZE))
 
     def draw(self, surface):
