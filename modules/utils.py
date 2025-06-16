@@ -20,3 +20,13 @@ class Difficulty(Enum):
     MEDIUM = 2
     HARD = 3
     FINAL_BOSS = 4
+
+class PowerupType(Enum):
+    EXTRA_LIFE = 0
+    EXTRA_BOMB = 1
+    EXTRA_VELOCITY = 2
+    EXTRA_DAMAGE = 3
+    EXPLOSION_RANGE = 4
+    BOMB_IMMUNITY = 5
+    PHASE_TROUGH = 6
+    FREEZE_ENEMIES = 7

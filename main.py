@@ -37,13 +37,18 @@ Items y Powerups
 #Puedes atravesar bloques por 5 segundos
 #Los enemigos se detienen por 7 segundos
 #Aumento +1 bombas
+#Aumento +1 de velocidad
+#Aumento 1+ de daño
 class Powerups:
 
 
-#Los enemigos hacen el doble de danio pero el mapa tiene menos obstaculos
-# x1.5 De velocidad por todo el juego
-#El siguiente hit no te hace dano
-# Por todo el juego tienes una probabilidad de revivir de un 25% con 1 de vida
+#Los enemigos hacen el doble de danio pero tu daño incrementa en +5 - XV The Devil
+# x1.5 De velocidad por todo el juego - O The Fool
+#El siguiente hit no te hace dano - VII The Chariot
+# Por todo el juego tienes una probabilidad de revivir de un 25% con 1 de vida - XIX The Sun
+#Tus ataque persiguen a los enemigos - I The Magician
+#Escopeta - II The High Priestess
+#Cada 20 ataques que inflingan daño te curas 1 corazón - VI The Lovers 
 class Items:
 
 

@@ -1,5 +1,6 @@
 import pygame
 from modules.utils import ORANGE, TILE_SIZE, FPS
+from main import Game
 
 class Bomb:
     def __init__(self, x, y, timer=3, bomb_range=1):  # Reducido el rango de explosión

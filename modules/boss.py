@@ -46,6 +46,6 @@ class Boss:
         player.can_place_bombs = False
         pygame.time.set_timer(pygame.USEREVENT, 5000)
 
-    def _super_bombs(self, player, arena_blocks):
+    #def _super_bombs(self, player, arena_blocks):
 
-    def _charge_attack(self, player, arena_blocks):
+    #def _charge_attack(self, player, arena_blocks):
