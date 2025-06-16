@@ -217,24 +217,41 @@ class Level:
             if not blocked and not enemy_near:
                 return x, y
 
+    def generate_powerup(self, x, y):
+        powerup = Powerup(x, y)
+        self.powerups.append(powerup)
+        print(f"[DEBUG] Powerup generado: {powerup.type.name} en ({x}, {y})")
+
     def check_bomb_collisions(self, bomb, player):
+        if not bomb.exploded:
+            return
         # Destruir bloques
-        for block in self.map:
+        blocks_to_remove = []
+        for block in self.map[:]:
             if block.destructible and not block.destroyed:
                 for exp_rect in bomb.explosion_rects:
-                    if block.rect.colliderect(exp_rect) and random.random() <= 0.5:
+                    if block.rect.colliderect(exp_rect):
                         block.destroyed = True
-                        powerup = Powerup(block.rect.x, block.rect.y)
-                        self.powerups.append(powerup)
+                        blocks_to_remove.append(block)
+                        if random.random() <= 0.5:
+                            self.generate_powerup(block.rect.x, block.rect.y)
                         if block.has_key and not block.revealed_key:
                             block.revealed_key = True
                             self.key.rect.x = block.rect.x
                             self.key.rect.y = block.rect.y
                             self.key.collected = False
-                    if player.hitbox.colliderect(exp_rect) and not player.invincible:
-                        player.take_damage()
-
                         break
+
+        for block in blocks_to_remove:
+            if block in self.map:
+                self.map.remove(block)
+
+        for exp_rect in bomb.explosion_rects:
+            if player.hitbox.colliderect(exp_rect) and not player.invincible:
+                player.lives -= 1
+                player.take_damage()
+                break
+
 
         # Dañar enemigos
         for enemy in self.enemies[:]:  # Usamos copia para poder modificar la lista
@@ -246,13 +263,8 @@ class Level:
                             self.enemies.remove(enemy)
                         break
 
-        # Dañar jugador
-        for exp_rect in bomb.explosion_rects:
-            if player.hitbox.colliderect(exp_rect) and not player.invincible:
-                player.lives -= 1
-                player.take_damage()
-                break
-
+        print(f"[DEBUG] Bloques en mapa: {len(self.map)}")
+        print(f"[DEBUG] Powerups activos: {len(self.powerups)}")
 
     def update_powerups(self, player):
         for powerup in self.powerups[:]:

@@ -1,9 +1,8 @@
 import sys
 import pygame
-from pygame.locals import *
-import cv2
-import numpy as np
+from pygame.examples.go_over_there import screen
 
+from modules.powerups import Powerup, PowerupType
 from modules.button import Button
 from modules.level import Level
 from modules.player import Player
@@ -65,9 +64,6 @@ clock = pygame.time.Clock()
 info = pygame.display.Info()
 
 real_width, real_height = info.current_w, info.current_h
-v_screen = pygame.Surface((800, 600))
-screen = pygame.display.set_mode((real_width, real_height), pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF)
-fullscreen = True
 
 
 class Game:
@@ -179,7 +175,6 @@ class Game:
         return True
 
     def handle_events(self):
-        global fullscreen, screen, real_width, real_height, v_screen
         mouse_pos = pygame.mouse.get_pos()
         mouse_click = False
 
@@ -202,17 +197,9 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.state = GameState.MENU
 
-                if event.key == pygame.K_f:
-                    fullscreen = not fullscreen
-                    if fullscreen:
-                        screen = pygame.display.set_mode(
-                            (real_width, real_height),
-                            pygame.FULLSCREEN)
+
 
         self.levels[self.current_level_index].update_powerups(self.player)
-        scaled_screen = pygame.transform.scale(v_screen, (real_width, real_height))
-        screen.blit(scaled_screen, (0, 0))
-        pygame.display.flip()
 
 
 
@@ -360,6 +347,8 @@ class Game:
         # Dibujar jugador
         self.player.draw(window)
 
+        Powerup.load_sprites()
+
         # Dibujar HUD
         lives_text = self.font.render(f"Vidas: {self.player.lives}", True, WHITE)
         score_text = self.font.render(f"Puntos: {self.score}", True, WHITE)
@@ -410,7 +399,6 @@ class Game:
         while running:
             running = self.handle_events()
             self.update()
-
             self.draw()
             clock.tick(FPS)
             if self.state == GameState.GAME:

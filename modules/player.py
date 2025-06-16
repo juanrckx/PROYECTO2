@@ -40,14 +40,14 @@ class Player:
             return True
         return False
 
-    def activate_powerup(self, ):
+    def activate_powerup(self):
         if not self.stored_powerup:
             return
-        if self.store_powerup.type == PowerupType.EXTRA_LIFE:
+        if self.stored_powerup.type == PowerupType.EXTRA_LIFE:
             self.lives += 1
-        elif self.store_powerup.type == PowerupType.EXTRA_BOMB:
-            self.bombs += 1
-        elif self.store_powerup.type == PowerupType.EXTRA_VELOCITY:
+        elif self.stored_powerup.type == PowerupType.EXTRA_BOMB:
+            self.available_bombs += 1
+        elif self.stored_powerup.type == PowerupType.EXTRA_VELOCITY:
             self.speed += 1
         elif self.stored_powerup.type == PowerupType.EXPLOSION_RANGE:
             self.explosion_range += 1
