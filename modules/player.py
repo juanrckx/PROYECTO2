@@ -1,5 +1,5 @@
 import pygame
-from modules.utils import RED, TILE_SIZE
+from modules.utils import RED, TILE_SIZE, PowerupType
 from modules.bomb import Bomb
 
 class Player:
@@ -14,12 +14,12 @@ class Player:
         self.color = color
         #self.item = item
         self.character_type = character_type
-        self.base_explosion_range = 1
+        self.base_explosion_range = 2 if character_type == 2 else 1
         self.explosion_range = self.base_explosion_range
 
         self.bombs = []
         self.bomb_capacity = bomb_capacity
-        self.available_bombs = bomb_capacity  # Bombas disponibles
+        self.available_bombs = bomb_capacity
 
         self.key_collected = False
 
@@ -27,6 +27,41 @@ class Player:
         self.invincible_frames = 0
         self.invincible_duration = 140  # Duración de invincibilidad (frames)
         self.visible = True
+
+        self.stored_powerup = None
+        self.active_effects = {
+            "bomb_immune": False,
+            "phase_through": False,
+            "frozen_enemies": False}
+
+    def store_powerup(self, powerup):
+        if self.stored_powerup is None:
+            self.stored_powerup = powerup
+            return True
+        return False
+
+    def activate_powerup(self, ):
+        if not self.stored_powerup:
+            return
+        if self.store_powerup.type == PowerupType.EXTRA_LIFE:
+            self.lives += 1
+        elif self.store_powerup.type == PowerupType.EXTRA_BOMB:
+            self.bombs += 1
+        elif self.store_powerup.type == PowerupType.EXTRA_VELOCITY:
+            self.speed += 1
+        elif self.stored_powerup.type == PowerupType.EXPLOSION_RANGE:
+            self.explosion_range += 1
+        elif self.stored_powerup.type == PowerupType.BOMB_IMMUNITY:
+            self.active_effects["bomb_immune"] = True
+            pygame.time.set_timer(pygame.USEREVENT + 10, 5000)  # 5 segundos
+        elif self.stored_powerup.type == PowerupType.PHASE_TROUGH:
+            self.active_effects["phase_through"] = True
+            pygame.time.set_timer(pygame.USEREVENT + 11, 5000)
+        elif self.stored_powerup.type == PowerupType.FREEZE_ENEMIES:
+            self.active_effects["frozen_enemies"] = True
+            pygame.time.set_timer(pygame.USEREVENT + 12, 7000)
+
+        self.stored_powerup = None
 
 
     def move(self, dx, dy, game_map):

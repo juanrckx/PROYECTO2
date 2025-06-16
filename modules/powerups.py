@@ -11,14 +11,20 @@ class Powerup:
         self.spawn_time = datetime.now()
         self.lifespan = timedelta(seconds=90)
         self.active = True
-        self.sprites = {PowerupType.EXTRA_LIFE: pygame.image.load("assets/powerups/extra_life.png")}
+        self.sprites = {PowerupType.EXTRA_LIFE: pygame.image.load("assets/textures/powerups/life_up2.png"),
+                        PowerupType.EXTRA_BOMB: pygame.image.load("assets/textures/powerups/bomb_up.png"),
+                        PowerupType.EXTRA_VELOCITY: pygame.image.load("assets/textures/powerups/speedup.png"),
+                        PowerupType.EXPLOSION_RANGE: pygame.image.load("assets/textures/powerups/dmg_up.png"),
+                        PowerupType.BOMB_IMMUNITY: pygame.image.load("assets/textures/powerups/bomb_inmunity.png"),
+                        PowerupType.PHASE_TROUGH: pygame.image.load("assets/textures/powerups/phase_through.png"),
+                        PowerupType.FREEZE_ENEMIES: pygame.image.load("assets/textures/powerups/freeze_enemies.png")}
 
-        self.duration = {PowerupType.BOMB_IMMUNITY: 5000,
-                         PowerupType.PHASE_TROUGH: 5000,
-                         PowerupType.FREEZE_ENEMIES: 7000,}.get(self.type, 0)
 
-    def apply(self, player):
-        if self.type == PowerupType.EXTRA_LIFE:
-            player.lives += 1
-        elif self.type == PowerupType.EXPLOSION_RANGE
+    def update(self):
+        if datetime.now() - self.spawn_time > self.lifespan:
+            self.active = False
+
+    def draw(self, surface):
+        if self.active:
+            surface.blit(self.sprites[self.type], self.rect)
 

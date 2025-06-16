@@ -1,3 +1,4 @@
+from modules.powerups import Powerup
 from modules.utils import Difficulty, TILE_SIZE
 import random
 from modules.enemy import Enemy
@@ -14,6 +15,7 @@ class Level:
         self.enemies = []
         self.door_block_position = None
         self.generate_level()
+        self.powerups = []
 
     def generate_level(self):
         self.generate_map()
@@ -220,8 +222,10 @@ class Level:
         for block in self.map:
             if block.destructible and not block.destroyed:
                 for exp_rect in bomb.explosion_rects:
-                    if block.rect.colliderect(exp_rect):
+                    if block.rect.colliderect(exp_rect) and random.random() <= 0.5:
                         block.destroyed = True
+                        powerup = Powerup(block.rect.x, block.rect.y)
+                        self.powerups.append(powerup)
                         if block.has_key and not block.revealed_key:
                             block.revealed_key = True
                             self.key.rect.x = block.rect.x
@@ -248,3 +252,13 @@ class Level:
                 player.lives -= 1
                 player.take_damage()
                 break
+
+
+    def update_powerups(self, player):
+        for powerup in self.powerups[:]:
+            powerup.update()
+            if not powerup.active:
+                self.powerups.remove(powerup)
+            elif player.rect.colliderect(powerup.rect):
+                if player.store_powerup(powerup):
+                    self.powerups.remove(powerup)

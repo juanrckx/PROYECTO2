@@ -2,7 +2,7 @@ import pygame
 from modules.utils import ORANGE, TILE_SIZE, FPS
 
 class Bomb:
-    def __init__(self, x, y, player, timer=3, bomb_range=1):  # Reducido el rango de explosión
+    def __init__(self, x, y, player, timer=3, bomb_range=1):
         self.rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
         self.timer = timer * FPS  # Convertir segundos a frames
         self.range = bomb_range
@@ -34,13 +34,15 @@ class Bomb:
                     (0, -i),  # Arriba
                 ]
 
-            if explosion_type == "diamond":
-                directions.extend([
-                    (i - 1, i - 1),  # Diagonal inferior derecha
-                    (-(i - 1), i - 1),  # Diagonal inferior izquierda
-                    (i - 1, -(i - 1)),  # Diagonal superior derecha
-                    (-(i - 1), -(i - 1))  # Diagonal superior izquierda
-                    ])
+            if explosion_type == "diamond" or self.player.character_type == 2:
+
+                    directions.extend([
+            (0, -2),  # Arriba (▲)
+            (-1, -1), (0, -1), (1, -1),  # Diagonal superior
+            (-2, 0), (-1, 0), (1, 0), (2, 0),  # Horizontal (◄ ♦ ►)
+            (-1, 1), (0, 1), (1, 1),  # Diagonal inferior
+            (0, 2)  # Abajo (▼)
+        ])
 
             for dx, dy in directions:
                 new_rect = pygame.Rect(
@@ -48,9 +50,7 @@ class Bomb:
                     self.rect.y + dy * TILE_SIZE, TILE_SIZE, TILE_SIZE)
                 if new_rect not in self.explosion_rects:  # Evita duplicados
                     self.explosion_rects.append(new_rect)
-
-
-
+            print(f"[DEBUG] Explosión: {explosion_type}, Rango: {self.range}")
 
     def draw(self, surface):
         if not self.exploded:

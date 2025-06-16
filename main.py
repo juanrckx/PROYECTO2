@@ -1,5 +1,8 @@
 import sys
 import pygame
+from pygame.locals import *
+import cv2
+import numpy as np
 
 from modules.button import Button
 from modules.level import Level
@@ -25,19 +28,10 @@ Ambientacion
 #Trampa que invierte el movimiento del jugador
 #class Traps:
 
-Bloques destructibles e indestructibles YA
-Llave Oculta en un bloque destructible YA
 Mejora de una estadistica al terminar un nivel
-Dificultad 
+ 
 
-Items y Powerups
-#Aumento +1 de vida
-#Aumento rango de explosion
-#Bombas no hacen danio al jugador
-#Puedes atravesar bloques por 5 segundos
-#Los enemigos se detienen por 7 segundos
-#Aumento +1 bombas
-#Aumento +1 de velocidad
+
 #Aumento 1+ de daño
 class Powerups:
 
@@ -130,7 +124,7 @@ class Game:
 
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(1, 1, 3, 3, BLUE, 3, 0)
+            self.player = Player(1, 1, 3, 3, BLUE, 99, 0)
         elif character_type == 1:  # Tanky
             self.player = Player(1, 1, 5, 2, GREEN, 2, 1)
         elif character_type == 2:  # Pyro
@@ -197,16 +191,25 @@ class Game:
                 mouse_click = True
 
             if event.type == pygame.KEYDOWN:
+                if self.state == GameState.GAME and event.key == pygame.K_SPACE:
+                    self.player.activate_powerup()
+                elif event.type == pygame.USEREVENT + 10:
+                    self.player.active_effects["bomb_inmune"] = False
+
                 if self.state == GameState.GAME and event.key == pygame.K_e:
                     self.player.player_place_bomb()
-                elif event.key == pygame.K_ESCAPE:
+
+                if event.key == pygame.K_ESCAPE:
                     self.state = GameState.MENU
+
                 if event.key == pygame.K_f:
                     fullscreen = not fullscreen
                     if fullscreen:
                         screen = pygame.display.set_mode(
                             (real_width, real_height),
                             pygame.FULLSCREEN)
+
+        self.levels[self.current_level_index].update_powerups(self.player)
         scaled_screen = pygame.transform.scale(v_screen, (real_width, real_height))
         screen.blit(scaled_screen, (0, 0))
         pygame.display.flip()
@@ -407,6 +410,7 @@ class Game:
         while running:
             running = self.handle_events()
             self.update()
+
             self.draw()
             clock.tick(FPS)
             if self.state == GameState.GAME:
