@@ -1,7 +1,6 @@
 import pygame
-from modules.utils import GameState, Difficulty, GREEN, RED, GRAY, BLUE, BLACK, BROWN, YELLOW, ORANGE, HEIGHT, WIDTH, TILE_SIZE, FPS
+from modules.utils import TILE_SIZE
 import random
-from main import Game
 
 class Enemy:
     def __init__(self, x, y, enemy_type):

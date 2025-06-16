@@ -1,5 +1,4 @@
 import sys
-
 import pygame
 
 from modules.button import Button
@@ -48,16 +47,29 @@ class Powerups:
 class Items:
 
 
-Pantalla de Inicio #YA
 Pantalla de configuraciones
 Pantalla con los mejores puntajes
 Pantalla de información
+Ajustar pantalla completa
+Ajustar resolucion
+Tiempo de invulnerabilidad al iniciar un mundo
+Animacion de inicio del juego
+Animacion explosiones
+Armas
+Musica
 '''
 # Inicialización de Pygame
 pygame.init()
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Bomb's Before")
 clock = pygame.time.Clock()
+info = pygame.display.Info()
+
+real_width, real_height = info.current_w, info.current_h
+v_screen = pygame.Surface((800, 600))
+screen = pygame.display.set_mode((real_width, real_height), pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF)
+fullscreen = True
+
 
 class Game:
     def __init__(self):
@@ -160,6 +172,7 @@ class Game:
         return True
 
     def handle_events(self):
+        global fullscreen, screen, real_width, real_height, v_screen
         mouse_pos = pygame.mouse.get_pos()
         mouse_click = False
 
@@ -175,6 +188,17 @@ class Game:
                     self.player.place_bomb()
                 elif event.key == pygame.K_ESCAPE:
                     self.state = GameState.MENU
+                if event.key == pygame.K_f:
+                    fullscreen = not fullscreen
+                    if fullscreen:
+                        screen = pygame.display.set_mode(
+                            (real_width, real_height),
+                            pygame.FULLSCREEN)
+        scaled_screen = pygame.transform.scale(v_screen, (real_width, real_height))
+        screen.blit(scaled_screen, (0, 0))
+        pygame.display.flip()
+
+
 
         # Manejo de botones según el estado del juego
         if self.state == GameState.MENU:
@@ -343,7 +367,7 @@ class Game:
 
 
     def draw_game_over(self):
-        text = self.font.render("GAME OVER", True, (RED))
+        text = self.font.render("GAME OVER", True, RED)
         score = self.font.render(f"Puntuación final: {self.score}", True, WHITE)
         window.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - 50))
         window.blit(score, (WIDTH // 2 - score.get_width() // 2, HEIGHT // 2 + 20))
