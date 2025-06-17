@@ -59,7 +59,6 @@ Musica
 pygame.init()
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Bomb's Before")
-clock = pygame.time.Clock()
 info = pygame.display.Info()
 
 real_width, real_height = info.current_w, info.current_h
@@ -283,6 +282,7 @@ class Game:
             self.next_level()
             self.score += 500
 
+        current_level.update_powerups(self.player)
 
     def draw(self):
         window.fill(BLACK)
@@ -297,6 +297,7 @@ class Game:
             self.draw_game_over()
         elif self.state == GameState.VICTORY:
             self.draw_victory()
+
 
         pygame.display.flip()
 
@@ -343,11 +344,11 @@ class Game:
         for bomb in self.player.bombs:
             bomb.draw(window)
 
+        for powerup in self.player.powerups:
+            powerup.draw(window)
+
         # Dibujar jugador
         self.player.draw(window)
-
-        Powerup.load_sprites()
-
         # Dibujar HUD
         lives_text = self.font.render(f"Vidas: {self.player.lives}", True, WHITE)
         score_text = self.font.render(f"Puntos: {self.score}", True, WHITE)
@@ -397,11 +398,12 @@ class Game:
         clock = pygame.time.Clock()
         running = True
         while running:
+
             running = self.handle_events()
             self.update()
-            self.draw()
             if self.state == GameState.GAME:
                 self.player.update_invincibility()
+            self.draw()
             fps = clock.get_fps()
             pygame.display.set_caption(f"BomberMan | FPS: {fps:.1f}")
             clock.tick(FPS)

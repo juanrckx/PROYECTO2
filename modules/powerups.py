@@ -5,6 +5,7 @@ import random
 from modules.utils import PowerupType
 
 class Powerup:
+    _sprites = None
 
     @classmethod
     def load_sprites(cls):
@@ -16,8 +17,8 @@ class Powerup:
                         PowerupType.PHASE_TROUGH: pygame.image.load("assets/textures/powerups/phase_through.png").convert_alpha(),
                         PowerupType.FREEZE_ENEMIES: pygame.image.load("assets/textures/powerups/freeze_enemies.png").convert_alpha()}
 
-        for key, sprite in cls._sprites.items():
-            cls._sprites[key] = pygame.transform.scale(sprite, (32, 32))
+        for key in cls._sprites:
+            cls._sprites[key] = pygame.transform.scale(cls._sprites[key], (32, 32))
 
     def __init__(self, x, y):
         self.rect = pygame.Rect(x, y, 32, 32)
@@ -27,10 +28,11 @@ class Powerup:
         self.active = True
 
     def update(self):
-        if datetime.now() - self.spawn_time > self.lifespan:
+        if datetime.now() > self.spawn_time + self.lifespan:
             self.active = False
 
     def draw(self, surface):
-        if self.active and self._sprites:
-            surface.blit(self._sprites[self.type], self.rect)
+        if not self.active:
+            return
+        surface.blit(self._sprites[self.type], self.rect)
 
