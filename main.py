@@ -1,8 +1,7 @@
 import sys
 import pygame
-from pygame.examples.go_over_there import screen
 
-from modules.powerups import Powerup, PowerupType
+from modules.powerups import Powerup
 from modules.button import Button
 from modules.level import Level
 from modules.player import Player
