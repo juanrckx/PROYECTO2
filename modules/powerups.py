@@ -8,13 +8,13 @@ class Powerup:
 
     @classmethod
     def load_sprites(cls):
-        cls._sprites = {PowerupType.EXTRA_LIFE: pygame.image.load("assets/textures/powerups/life_up2.png"),
-                        PowerupType.EXTRA_BOMB: pygame.image.load("assets/textures/powerups/bomb_up.png"),
-                        PowerupType.EXTRA_VELOCITY: pygame.image.load("assets/textures/powerups/speedup.png"),
-                        PowerupType.EXPLOSION_RANGE: pygame.image.load("assets/textures/powerups/dmg_up.png"),
-                        PowerupType.BOMB_IMMUNITY: pygame.image.load("assets/textures/powerups/bomb_inmunity.png"),
-                        PowerupType.PHASE_TROUGH: pygame.image.load("assets/textures/powerups/phase_through.png"),
-                        PowerupType.FREEZE_ENEMIES: pygame.image.load("assets/textures/powerups/freeze_enemies.png")}
+        cls._sprites = {PowerupType.EXTRA_LIFE: pygame.image.load("assets/textures/powerups/life_up2.png").convert_alpha(),
+                        PowerupType.EXTRA_BOMB: pygame.image.load("assets/textures/powerups/bomb_up.png").convert_alpha(),
+                        PowerupType.EXTRA_VELOCITY: pygame.image.load("assets/textures/powerups/speedup.png").convert_alpha(),
+                        PowerupType.EXPLOSION_RANGE: pygame.image.load("assets/textures/powerups/dmg_up.png").convert_alpha(),
+                        PowerupType.BOMB_IMMUNITY: pygame.image.load("assets/textures/powerups/bomb_inmunity.png").convert_alpha(),
+                        PowerupType.PHASE_TROUGH: pygame.image.load("assets/textures/powerups/phase_through.png").convert_alpha(),
+                        PowerupType.FREEZE_ENEMIES: pygame.image.load("assets/textures/powerups/freeze_enemies.png").convert_alpha()}
 
         for key, sprite in cls._sprites.items():
             cls._sprites[key] = pygame.transform.scale(sprite, (32, 32))

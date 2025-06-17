@@ -263,8 +263,6 @@ class Level:
                             self.enemies.remove(enemy)
                         break
 
-        print(f"[DEBUG] Bloques en mapa: {len(self.map)}")
-        print(f"[DEBUG] Powerups activos: {len(self.powerups)}")
 
     def update_powerups(self, player):
         for powerup in self.powerups[:]:

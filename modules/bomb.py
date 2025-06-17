@@ -50,7 +50,6 @@ class Bomb:
                     self.rect.y + dy * TILE_SIZE, TILE_SIZE, TILE_SIZE)
                 if new_rect not in self.explosion_rects:  # Evita duplicados
                     self.explosion_rects.append(new_rect)
-            print(f"[DEBUG] Explosión: {explosion_type}, Rango: {self.range}")
 
     def draw(self, surface):
         if not self.exploded:

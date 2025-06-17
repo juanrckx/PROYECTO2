@@ -394,14 +394,18 @@ class Game:
         window.blit(restart, (WIDTH // 2 - restart.get_width() // 2, HEIGHT // 2 + 100))
 
     def run(self):
+        clock = pygame.time.Clock()
         running = True
         while running:
             running = self.handle_events()
             self.update()
             self.draw()
-            clock.tick(FPS)
             if self.state == GameState.GAME:
                 self.player.update_invincibility()
+            fps = clock.get_fps()
+            pygame.display.set_caption(f"BomberMan | FPS: {fps:.1f}")
+            clock.tick(FPS)
+
 
 
 if __name__ == "__main__":
