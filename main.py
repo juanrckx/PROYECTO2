@@ -5,7 +5,8 @@ from modules.powerups import Powerup
 from modules.button import Button
 from modules.level import Level
 from modules.player import Player
-from modules.utils import GameState, Difficulty, GREEN, RED, BLUE, BLACK, HEIGHT, WIDTH, TILE_SIZE, FPS, WHITE
+from modules.utils import GameState, Difficulty, GREEN, RED, BLUE, BLACK, HEIGHT, WIDTH, TILE_SIZE, FPS, WHITE, ScrollingBackground
+
 '''
 
 Boss Fight
@@ -28,10 +29,7 @@ Ambientacion
 
 Mejora de una estadistica al terminar un nivel
  
-
-
-#Aumento 1+ de daño
-class Powerups:
+Arreglar fantasma, daño y freeze enemies
 
 
 #Los enemigos hacen el doble de danio pero tu daño incrementa en +5 - XV The Devil
@@ -57,11 +55,22 @@ Musica
 '''
 # Inicialización de Pygame
 pygame.init()
+if not pygame.font.get_init():  # Verifica si el módulo de fuentes está inicializado
+    pygame.font.init()
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Bomb's Before")
 info = pygame.display.Info()
 
 real_width, real_height = info.current_w, info.current_h
+
+from modules.utils import load_fonts
+DEFAULT_FONT = load_fonts(20)
+TITLE_FONT = load_fonts(30)
+
+if DEFAULT_FONT is None or TITLE_FONT is None:
+    print("¡Error: No se pudo cargar ninguna fuente!")
+    pygame.quit()
+    sys.exit()
 
 
 class Game:
@@ -78,7 +87,8 @@ class Game:
         self.player = None
         self.score = 0
         self.start_time = 0
-        self.font = pygame.font.SysFont("Arial", 30)
+        #self.font = custom
+        self.background = ScrollingBackground("assets/textures/bg/background.png")
 
         # Botones del menú
         self.start_button = Button(
@@ -320,12 +330,14 @@ class Game:
         pygame.display.flip()
 
     def draw_menu(self):
-        title = self.font.render("BOMB'S BEFORE", True, WHITE)
+        self.background.update()
+        self.background.draw(window)
+        title = TITLE_FONT.render("BOMB'S BEFORE", True, WHITE)
         window.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 3))
         self.start_button.draw(window)
 
     def draw_character_select(self):
-        title = self.font.render("SELECCIONA TU PERSONAJE", True, WHITE)
+        title = TITLE_FONT.render("SELECCIONA TU PERSONAJE", True, WHITE)
         window.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 4))
 
         # Dibujar botones de personajes
@@ -333,13 +345,12 @@ class Game:
             button.draw(window)
 
         # Dibujar descripciones de personajes sin superposición
-        desc_font = pygame.font.SysFont("Arial", 20)
         for i, desc_lines in enumerate(self.character_descriptions):
             x_pos = self.character_buttons[i].rect.x
             y_pos = self.character_buttons[i].rect.y - 10 - len(desc_lines) * 25
 
             for j, line in enumerate(desc_lines):
-                text = desc_font.render(line, True, WHITE)
+                text = DEFAULT_FONT.render(line, True, WHITE)
                 window.blit(text, (x_pos, y_pos + j * 25))
 
     def draw_game(self):
@@ -370,12 +381,12 @@ class Game:
         # Dibujar jugador
         self.player.draw(window)
         # Dibujar HUD
-        lives_text = self.font.render(f"Vidas: {self.player.lives}", True, WHITE)
-        score_text = self.font.render(f"Puntos: {self.score}", True, WHITE)
-        level_text = self.font.render(
+        lives_text = DEFAULT_FONT.render(f"Vidas: {self.player.lives}", True, WHITE)
+        score_text = DEFAULT_FONT.render(f"Puntos: {self.score}", True, WHITE)
+        level_text = DEFAULT_FONT.render(
             f"Nivel: {self.current_level_index + 1}/{len(self.levels)}",
             True, WHITE)
-        bombs_text = self.font.render(
+        bombs_text = DEFAULT_FONT.render(
             f"Bombas: {self.player.available_bombs}/{self.player.bomb_capacity}",
             True, WHITE)
 
@@ -385,7 +396,7 @@ class Game:
         window.blit(bombs_text, (WIDTH - 150, 50))
 
         # Mostrar si tiene la llave
-        key_text = self.font.render(
+        key_text = DEFAULT_FONT.render(
             "Llave: " + ("Sí" if self.player.key_collected else "No"),
             True, WHITE)
         window.blit(key_text, (WIDTH // 2 - key_text.get_width() // 2, 10))
@@ -400,26 +411,26 @@ class Game:
 
 
     def draw_game_over(self):
-        text = self.font.render("GAME OVER", True, RED)
-        score = self.font.render(f"Puntuación final: {self.score}", True, WHITE)
+        text = DEFAULT_FONT.render("GAME OVER", True, RED)
+        score = DEFAULT_FONT.render(f"Puntuación final: {self.score}", True, WHITE)
         window.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - 50))
         window.blit(score, (WIDTH // 2 - score.get_width() // 2, HEIGHT // 2 + 20))
 
-        restart = self.font.render("Haz clic para volver al menú", True, WHITE)
+        restart = DEFAULT_FONT.render("Haz clic para volver al menú", True, WHITE)
         window.blit(restart, (WIDTH // 2 - restart.get_width() // 2, HEIGHT // 2 + 80))
 
     def draw_victory(self):
-        text = self.font.render("¡VICTORIA!", True, GREEN)
-        score = self.font.render(f"Puntuación final: {self.score}", True, WHITE)
+        text = DEFAULT_FONT.render("¡VICTORIA!", True, GREEN)
+        score = DEFAULT_FONT.render(f"Puntuación final: {self.score}", True, WHITE)
 
         play_time = (pygame.time.get_ticks() - self.start_time) // 1000
-        time_text = self.font.render(f"Tiempo: {play_time} segundos", True, WHITE)
+        time_text = DEFAULT_FONT.render(f"Tiempo: {play_time} segundos", True, WHITE)
 
         window.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - 80))
         window.blit(score, (WIDTH // 2 - score.get_width() // 2, HEIGHT // 2 - 20))
         window.blit(time_text, (WIDTH // 2 - time_text.get_width() // 2, HEIGHT // 2 + 40))
 
-        restart = self.font.render("Haz clic para volver al menú", True, WHITE)
+        restart = DEFAULT_FONT.render("Haz clic para volver al menú", True, WHITE)
         window.blit(restart, (WIDTH // 2 - restart.get_width() // 2, HEIGHT // 2 + 100))
 
     Powerup.load_sprites()
