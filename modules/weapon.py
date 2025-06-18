@@ -6,7 +6,7 @@ class Weapon:
         self.owner = owner
         self.bullets = []
         self.cooldown = 0
-        self.damage = 1
+        self.damage = 0.5
         self.speed=10
         self.max_bullets = 10
 
@@ -18,16 +18,19 @@ class Weapon:
             self.cooldown = 15
 
 
-    def update(self):
+    def update(self, current_level):
         self.cooldown = max(0, self.cooldown - 1)
         for bullet in self.bullets[:]:
-            if not bullet.update():
-                continue
-            self.bullets.remove(bullet)
+            if bullet.update(current_level):
+               self.bullets.remove(bullet)
 
     def draw(self, surface):
         for bullet in self.bullets:
             bullet.draw(surface)
+
+
+
+
 
 class Bullet:
     def __init__(self, x, y, direction, speed, damage):
@@ -36,7 +39,7 @@ class Bullet:
         self.speed = speed
         self.damage = damage
 
-    def update(self):
+    def update(self, current_level):
         if self.direction == "up":
             self.rect.y -= self.speed
         elif self.direction == "down":
@@ -45,6 +48,10 @@ class Bullet:
             self.rect.x -= self.speed
         elif self.direction == "right":
             self.rect.x += self.speed
+
+        for block in current_level.map:
+            if not block.destroyed and self.rect.colliderect(block.rect):
+                return True
 
         # Retorna True si la bala sale de la pantalla
         return (self.rect.x < 0 or self.rect.x > WIDTH or

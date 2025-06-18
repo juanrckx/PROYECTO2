@@ -1,5 +1,5 @@
 import pygame
-from modules.utils import YELLOW, GRAY, TILE_SIZE
+from modules.utils import  GRAY, TILE_SIZE
 
 class Block:
     def __init__(self, x, y, destructible=False):
@@ -7,7 +7,6 @@ class Block:
         self.destructible = destructible
         self.has_key = False
         self.destroyed = False
-        self.revealed_key = False
 
         if not destructible:
             self.texture = pygame.Surface((TILE_SIZE, TILE_SIZE))
@@ -20,7 +19,4 @@ class Block:
     def draw(self, surface):
         if not self.destroyed:
             surface.blit(self.texture, self.rect)
-
-            if self.has_key and not self.revealed_key:
-                pygame.draw.circle(surface, YELLOW, self.rect.center, TILE_SIZE // 3)
 

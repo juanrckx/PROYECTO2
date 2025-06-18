@@ -120,13 +120,13 @@ class Game:
 
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(1, 1, 3, 3, BLUE, 99, 0)
+            self.player = Player(1, 1, 3, 3, BLUE, 51, 0)
         elif character_type == 1:  # Tanky
-            self.player = Player(1, 1, 5, 2, GREEN, 2, 1)
+            self.player = Player(1, 1, 5, 2, GREEN, 3, 1)
         elif character_type == 2:  # Pyro
-            self.player = Player(1, 1, 2, 5, RED, 4, 2)
+            self.player = Player(1, 1, 2, 5, RED, 8, 2)
         elif character_type == 3: #Cleric
-            self.player = Player(1, 1, 2, 4, WHITE, 2, 3)
+            self.player = Player(1, 1, 2, 4, WHITE, 4, 3)
 
         self.ensure_starting_position()
         self.score = 0
@@ -250,7 +250,7 @@ class Game:
         for enemy in current_level.enemies:
             enemy.update(current_level.map)
 
-        self.player.update_weapon()
+        self.player.update_weapon(current_level)
 
         for bullet in self.player.weapon.bullets[:]:
             for enemy in current_level.enemies[:]:
@@ -261,8 +261,7 @@ class Game:
                         current_level.enemies.remove(enemy)
                     break
 
-        print(f"Balas activas: {len(self.player.weapon.bullets)}")
-        print(f"Enemigos vivos: {len(current_level.enemies)}")
+
 
         for bomb in self.player.bombs[:]:
             if bomb.update(current_level):
@@ -285,10 +284,13 @@ class Game:
                 return
 
         current_level = self.levels[self.current_level_index]
-        if current_level.key and not current_level.key.collected:
-            if any(block.revealed_key for block in current_level.map if hasattr(block, 'has_key') and block.has_key):
-                current_level.key.draw(window)
-                current_level.key_collected = True
+
+        if (hasattr(current_level, 'key') and
+                current_level.key.revealed and
+                not current_level.key.collected and
+                self.player.hitbox.colliderect(current_level.key.rect)):
+
+                current_level.key.collected = True
                 self.player.key_collected = True
                 current_level.open_door()
 
@@ -345,11 +347,12 @@ class Game:
 
         # Dibujar mapa
         for block in current_level.map:
-            block.draw(window)
+            if not block.destroyed:
+                block.draw(window)
 
         # Dibujar puerta y llave
         current_level.door.draw(window)
-        if current_level.key and not current_level.key.collected:
+        if current_level.key and not current_level.key.collected and current_level.key.revealed:
             current_level.key.draw(window)
 
         # Dibujar enemigos

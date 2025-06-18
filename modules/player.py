@@ -4,7 +4,7 @@ from modules.bomb import Bomb
 from modules.weapon import Weapon
 
 class Player:
-    def __init__(self, x, y, lives, speed, color, bomb_capacity, character_type):
+    def __init__(self, x, y, lives, speed, color, bomb_capacity, character_type, damage=0.5, item=None,):
         self.rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
         self.hitbox = pygame.Rect(
             x * TILE_SIZE + 5, y * TILE_SIZE + 5,
@@ -36,6 +36,8 @@ class Player:
             "frozen_enemies": False}
 
         self.weapon = Weapon(self)
+        self.damage = damage
+        self.item = item
 
     def store_powerup(self, powerup):
         if self.stored_powerup is None:
@@ -50,9 +52,12 @@ class Player:
             self.lives += 1
         elif self.stored_powerup.type == PowerupType.EXTRA_BOMB:
             self.available_bombs += 1
-            self.bomb_capacity += 1
+            if self.available_bombs == self.bomb_capacity:
+                self.bomb_capacity += 1
         elif self.stored_powerup.type == PowerupType.EXTRA_VELOCITY:
             self.speed = min(self.speed + 1, 10)
+        elif self.stored_powerup.type == PowerupType.EXTRA_DAMAGE:
+            self.damage += 1
         elif self.stored_powerup.type == PowerupType.EXPLOSION_RANGE:
             self.explosion_range += 1
         elif self.stored_powerup.type == PowerupType.BOMB_IMMUNITY:
@@ -131,9 +136,9 @@ class Player:
                 self.visible = not self.visible
 
 
-    def update_weapon(self):
+    def update_weapon(self, current_level):
         self.update_invincibility()
-        self.weapon.update()
+        self.weapon.update(current_level)
 
     def shoot(self, direction):
         self.weapon.shoot(direction)

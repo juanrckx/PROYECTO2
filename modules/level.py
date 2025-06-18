@@ -171,8 +171,9 @@ class Level:
         if destructible_blocks:
             key_block = random.choice(destructible_blocks)
             key_block.has_key = True
-            self.key = Key(key_block.rect.x // TILE_SIZE, key_block.rect.y // TILE_SIZE)
             key_block.revealed_key = False
+            self.key = Key(key_block.rect.x // TILE_SIZE, key_block.rect.y // TILE_SIZE)
+
 
 
 
@@ -231,14 +232,18 @@ class Level:
                                 if block.rect.colliderect(exp_rect):
                                     block.destroyed = True
                                     self.map.remove(block)
-                                    if random.random() <= 0.5 and len(self.powerups) < 5:
+                                    if random.random() <= 0.7 and len(self.powerups) < 5:
                                         self.powerups.append(Powerup(block.rect.x, block.rect.y))
 
-                                    if block.has_key and not block.revealed_key:
-                                        block.revealed_key = True
+                                    if (getattr(block, 'has_key') and
+                                            block.has_key and not block.revealed_key):
                                         self.key.rect.x = block.rect.x
                                         self.key.rect.y = block.rect.y
                                         self.key.collected = False
+                                        self.key.revealed = True
+                                    if not (hasattr(block, 'has_key') and block.has_key):
+                                        if block in self.map:
+                                            self.map.remove(block)
 
                                     break
 
@@ -252,7 +257,7 @@ class Level:
                         if enemy.state != "dead":
                             for exp_rect in bomb.explosion_rects:
                                 if enemy.rect.colliderect(exp_rect):
-                                    enemy.take_damage()
+                                    enemy.take_damage(amount=2)
                                     if enemy.state == "dead":
                                         self.enemies.remove(enemy)
                                     break
