@@ -1,9 +1,9 @@
-from modules.powerups import Powerup
 from modules.utils import Difficulty, TILE_SIZE
 import random
 from modules.enemy import Enemy
 from modules.block import Block
 from modules.door import Door, Key
+
 
 class Level:
     def __init__(self, number, difficulty):
@@ -14,8 +14,8 @@ class Level:
         self.key = None
         self.enemies = []
         self.door_block_position = None
-        self.generate_level()
         self.powerups = []
+        self.generate_level()
 
     def generate_level(self):
         self.generate_map()
@@ -217,54 +217,46 @@ class Level:
             if not blocked and not enemy_near:
                 return x, y
 
-    def generate_powerup(self, x, y):
-        powerup = Powerup(x, y)
-        self.powerups.append(powerup)
-        print(f"[DEBUG] Powerup generado: {powerup.type.name} en ({x}, {y})")
-
+            # Actualizar bombas
     def check_bomb_collisions(self, bomb, player):
-        if not bomb.exploded:
-            return
-        # Destruir bloques
-        blocks_to_remove = []
-        for block in self.map[:]:
-            if block.destructible and not block.destroyed:
-                for exp_rect in bomb.explosion_rects:
-                    if block.rect.colliderect(exp_rect):
-                        block.destroyed = True
-                        blocks_to_remove.append(block)
-                        if random.random() <= 0.5:
-                            self.generate_powerup(block.rect.x, block.rect.y)
-                        if block.has_key and not block.revealed_key:
-                            block.revealed_key = True
-                            self.key.rect.x = block.rect.x
-                            self.key.rect.y = block.rect.y
-                            self.key.collected = False
-                        break
+            if not bomb.exploded:
+                return
+            if bomb.exploded:
+                    for block in self.map[:]:
+                        if block.destructible and not block.destroyed:
+                            for exp_rect in bomb.explosion_rects:
+                                if block.rect.colliderect(exp_rect):
+                                    block.destroyed = True
+                                    self.map.remove(block)
+                                    if random.random() <= 0.5 and len(self.powerups) < 5:
+                                        self.generate_powerup(player)
 
-        for block in blocks_to_remove:
-            if block in self.map:
-                self.map.remove(block)
+                                    if block.has_key and not block.revealed_key:
+                                        block.revealed_key = True
+                                        block.key.rect.x = block.rect.x
+                                        block.key.rect.y = block.rect.y
+                                        block.key.collected = False
 
-        for exp_rect in bomb.explosion_rects:
-            if player.hitbox.colliderect(exp_rect) and not player.invincible:
-                player.lives -= 1
-                player.take_damage()
-                break
+                                    break
 
+                    for exp_rect in bomb.explosion_rects:
+                        if player.hitbox.colliderect(exp_rect) and not player.invincible:
+                            player.lives -= 1
+                            player.take_damage()
+                            break
 
-        # Dañar enemigos
-        for enemy in self.enemies[:]:  # Usamos copia para poder modificar la lista
-            if enemy.state != "dead":
-                for exp_rect in bomb.explosion_rects:
-                    if enemy.rect.colliderect(exp_rect):
-                        enemy.take_damage()
-                        if enemy.state == "dead":
-                            self.enemies.remove(enemy)
-                        break
+                    for enemy in self.enemies[:]:  # Usamos copia para poder modificar la lista
+                        if enemy.state != "dead":
+                            for exp_rect in bomb.explosion_rects:
+                                if enemy.rect.colliderect(exp_rect):
+                                    enemy.take_damage()
+                                    if enemy.state == "dead":
+                                        self.enemies.remove(enemy)
+                                    break
 
 
-    def update_powerups(self, player):
+
+    def generate_powerup(self, player):
         for powerup in self.powerups[:]:
             powerup.update()
             if not powerup.active:
@@ -272,3 +264,5 @@ class Level:
             elif player.rect.colliderect(powerup.rect):
                 if player.store_powerup(powerup):
                     self.powerups.remove(powerup)
+
+

@@ -1,3 +1,4 @@
+import random
 import sys
 import pygame
 
@@ -65,6 +66,7 @@ real_width, real_height = info.current_w, info.current_h
 
 
 class Game:
+
     def __init__(self):
         self.state = GameState.MENU
         self.levels = [
@@ -107,6 +109,7 @@ class Game:
             ["Vida: 2", "Velocidad: 4", "Bombas: 4"],
             #["Vida: 2", "Velocidad: 2", "Bombas: 2"]
         ]
+
 
     def start_game(self, character_type):
         self.levels = [
@@ -197,7 +200,6 @@ class Game:
 
 
 
-        self.levels[self.current_level_index].update_powerups(self.player)
 
 
 
@@ -238,51 +240,13 @@ class Game:
         for enemy in current_level.enemies:
             enemy.update(current_level.map)
 
-        # Actualizar bombas
         for bomb in self.player.bombs[:]:
             if bomb.update():
                 current_level.check_bomb_collisions(bomb, self.player)
                 self.player.bombs.remove(bomb)
 
 
-        # Actualizar enemigos
-        for enemy in current_level.enemies:
-            if (enemy.state != "dead" and
-                    self.player.hitbox.colliderect(enemy.rect) and
-                    not self.player.invincible):
 
-                self.player.take_damage()
-                if self.player.take_damage():
-                    self.player.update_invincibility()
-
-            if self.player.lives <= 0:
-                self.state = GameState.GAME_OVER
-                return
-
-            # Verificar colisión con explosiones
-        for bomb in self.player.bombs[:]:
-            if bomb.exploded:
-                for exp_rect in bomb.explosion_rects:
-                    if (self.player.hitbox.colliderect(exp_rect) and
-                            not self.player.invincible):
-                        self.player.take_damage()
-                        if self.player.take_damage():
-                            self.player.update_invincibility()
-                        break
-
-        current_level = self.levels[self.current_level_index]
-        if current_level.key and not current_level.key.collected:
-            if any(block.revealed_key for block in current_level.map if hasattr(block, 'has_key') and block.has_key):
-                current_level.key.draw(window)
-                current_level.key_collected = True
-                self.player.key_collected = True
-                current_level.open_door()
-
-        if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
-            self.next_level()
-            self.score += 500
-
-        current_level.update_powerups(self.player)
 
     def draw(self):
         window.fill(BLACK)
@@ -344,8 +308,6 @@ class Game:
         for bomb in self.player.bombs:
             bomb.draw(window)
 
-        for powerup in self.player.powerups:
-            powerup.draw(window)
 
         # Dibujar jugador
         self.player.draw(window)
@@ -399,6 +361,7 @@ class Game:
         running = True
         while running:
 
+            Powerup.load_sprites()
             running = self.handle_events()
             self.update()
             if self.state == GameState.GAME:
