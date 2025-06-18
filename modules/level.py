@@ -7,9 +7,10 @@ from modules.door import Door, Key
 
 
 class Level:
-    def __init__(self, number, difficulty):
+    def __init__(self, number, difficulty, game):
         self.number = number
         self.difficulty = difficulty
+        self.game = game
         self.map = []
         self.door = None
         self.key = None
@@ -196,7 +197,7 @@ class Level:
                                                y * TILE_SIZE + TILE_SIZE // 2)
                        for block in self.map if not block.destroyed):
                 enemy_type = random.choices([1, 2, 3], weights=[0.5, 0.3, 0.2])[0]
-                self.enemies.append(Enemy(x, y, enemy_type))
+                self.enemies.append(Enemy(x, y, enemy_type, self.game))
 
     def find_valid_position(self):
         while True:
@@ -248,7 +249,7 @@ class Level:
                                     break
 
                     for exp_rect in bomb.explosion_rects:
-                        if not player_hit and player.hitbox.colliderect(exp_rect) and not player.invincible:
+                        if not player_hit and player.hitbox.colliderect(exp_rect) and not player.invincible and not player.active_effects.get("bomb_immune", False):
                             player_hit = True
                             player.take_damage()
                             break
@@ -261,4 +262,6 @@ class Level:
                                     if enemy.state == "dead":
                                         self.enemies.remove(enemy)
                                     break
+
+
 

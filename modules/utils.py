@@ -45,8 +45,9 @@ class GameState(Enum):
     MENU = 0
     CHARACTER_SELECT = 1
     GAME = 2
-    GAME_OVER = 3
-    VICTORY = 4
+    INTERLEVEL = 3
+    GAME_OVER = 4
+    VICTORY = 5
 
 
 class Difficulty(Enum):

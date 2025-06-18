@@ -1,11 +1,13 @@
 import sys
 import pygame
+import random
 
+from modules.interlevelscreen import InterLevelScreen
 from modules.powerups import Powerup
 from modules.button import Button
 from modules.level import Level
 from modules.player import Player
-from modules.utils import GameState, Difficulty, GREEN, RED, BLUE, BLACK, HEIGHT, WIDTH, TILE_SIZE, FPS, WHITE, ScrollingBackground
+from modules.utils import GameState, Difficulty, GRAY, GREEN, RED, BLUE, BLACK, HEIGHT, WIDTH, TILE_SIZE, FPS, WHITE, ScrollingBackground
 
 '''
 
@@ -27,11 +29,9 @@ Ambientacion
 #Trampa que invierte el movimiento del jugador
 #class Traps:
 
+
+#EN PROCESO
 Mejora de una estadistica al terminar un nivel
- 
-Arreglar fantasma, daño y freeze enemies
-
-
 #Los enemigos hacen el doble de danio pero tu daño incrementa en +5 - XV The Devil
 # x1.5 De velocidad por todo el juego - O The Fool
 #El siguiente hit no te hace dano - VII The Chariot
@@ -74,14 +74,13 @@ if DEFAULT_FONT is None or TITLE_FONT is None:
 
 
 class Game:
-
     def __init__(self):
         self.state = GameState.MENU
         self.levels = [
-            Level(1, Difficulty.EASY),
-            Level(2, Difficulty.MEDIUM),
-            Level(3, Difficulty.HARD),
-            Level(4, Difficulty.FINAL_BOSS)
+            Level(1, Difficulty.EASY, self),
+            Level(2, Difficulty.MEDIUM, self),
+            Level(3, Difficulty.HARD, self),
+            Level(4, Difficulty.FINAL_BOSS, self)
         ]
         self.current_level_index = 0
         self.player = None
@@ -93,19 +92,19 @@ class Game:
         # Botones del menú
         self.start_button = Button(
             WIDTH // 2 - 100, HEIGHT // 2, 200, 50,
-            "COMENZAR", GREEN, (100, 255, 100))
+            "COMENZAR", GRAY, (100, 255, 100), font=DEFAULT_FONT)
 
         # Botones de selección de personaje
         self.character_buttons = [
             Button(
                 WIDTH // 4 - 75, HEIGHT // 2 + 100, 150, 50,
-                "BOMBER", BLUE, (100, 100, 255)),
+                "BOMBER", BLUE, (100, 100, 255), font=DEFAULT_FONT),
             Button(
                 WIDTH // 2 - 75, HEIGHT // 2 + 100, 150, 50,
-                "TANKY", GREEN, (100, 255, 100)),
+                "TANKY", GREEN, (100, 255, 100), font=DEFAULT_FONT),
             Button(
                 3 * WIDTH // 4 - 75, HEIGHT // 2 + 100, 150, 50,
-                "PYRO", (255, 0, 0), (255, 100, 100))]
+                "PYRO", (255, 0, 0), (255, 100, 100), font=DEFAULT_FONT)]
             #Button(
                 #3 * WIDTH // 4 - 75, HEIGHT // 2 + 100, 150, 50,
                 #"CLERIC", (255, 0, 0), (255, 100, 100))
@@ -120,23 +119,32 @@ class Game:
         ]
 
 
+        try:
+            self.title_image = pygame.image.load("assets/textures/bg/title2.png").convert_alpha()
+            self.title_image = pygame.transform.smoothscale(self.title_image, (408, 612))  # Ajusta el tamaño
+            self.title_rect = self.title_image.get_rect(center=(WIDTH // 2, HEIGHT // 4))
+        except:
+            self.title_image = None
+
+        self.frozen_enemies = False  # Para control global
+
     def start_game(self, character_type):
         self.levels = [
-            Level(1, Difficulty.EASY),
-            Level(2, Difficulty.MEDIUM),
-            Level(3, Difficulty.HARD),
-            Level(4, Difficulty.FINAL_BOSS)]
+            Level(1, Difficulty.EASY, self),
+            Level(2, Difficulty.MEDIUM, self),
+            Level(3, Difficulty.HARD, self),
+            Level(4, Difficulty.FINAL_BOSS, self)]
         self.current_level_index = 0
 
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(1, 1, 3, 3, BLUE, 51, 0)
+            self.player = Player(1, 1, 3, 3, BLUE, 51, 0, self)
         elif character_type == 1:  # Tanky
-            self.player = Player(1, 1, 5, 2, GREEN, 3, 1)
+            self.player = Player(1, 1, 5, 2, GREEN, 3, 1, self)
         elif character_type == 2:  # Pyro
-            self.player = Player(1, 1, 2, 5, RED, 8, 2)
+            self.player = Player(1, 1, 2, 5, RED, 8, 2, self)
         elif character_type == 3: #Cleric
-            self.player = Player(1, 1, 2, 4, WHITE, 4, 3)
+            self.player = Player(1, 1, 2, 4, WHITE, 4, 3, self)
 
         self.ensure_starting_position()
         self.score = 0
@@ -162,6 +170,8 @@ class Game:
         ]
 
     def next_level(self):
+        self.state = GameState.INTERLEVEL
+        self.interlevel_screen = InterLevelScreen(self.player)
         if self.current_level_index >= len(self.levels) - 1:
             self.state = GameState.VICTORY
             return False
@@ -169,9 +179,9 @@ class Game:
         self.current_level_index += 1
 
         current_level = self.levels[self.current_level_index]
-        current_level.__init__(current_level.number, current_level.difficulty)
+        current_level.__init__(current_level.number, current_level.difficulty, self)
 
-            # Reposicionar al jugador y resetear bombas
+            # Reposicionar al jugador
         self.player.rect.x = TILE_SIZE
         self.player.rect.y = TILE_SIZE
         self.player.hitbox.x = self.player.rect.x + 5
@@ -182,7 +192,44 @@ class Game:
         self.player.visible = True
 
         self.ensure_starting_position()
+
+        self.player.active_effects = {
+            "bomb_immune": False,
+            "phase_through": False
+        }
+        self.frozen_enemies = False
+
+        # Resetear arma
+        self.player.weapon.damage = self.player.weapon.base_damage
+        self.player.weapon.speed = 10  # Velocidad base
         return True
+
+    def handle_interlevel_events(self):
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_click = False
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_click = True
+
+
+        choice = self.interlevel_screen.get_choice(mouse_pos, mouse_click)
+        if choice is not None:
+            self.apply_choice(choice)
+            self.state = GameState.GAME
+
+    def apply_choice(self, choice):
+        if choice == 0:
+            self.player.bomb_capacity += 2
+        if choice == 1:
+            self.player.health += 2
+        if choice == 2:
+            self.player.speed += 2
+        if choice == 3:
+            self.player.damage += 2
+        if choice == 4:
+            item = random.choice(self.interlevel_screen.items)
+            self.apply_item_effect(item["effect"])
+
 
     def handle_events(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -191,6 +238,14 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+
+            elif event.type == pygame.USEREVENT + 10:  # BOMB_IMMUNITY
+                self.player.active_effects["bomb_immune"] = False
+            elif event.type == pygame.USEREVENT + 11:  # PHASE_TROUGH
+                self.player.active_effects["phase_through"] = False
+            elif event.type == pygame.USEREVENT + 12:  # FREEZE_ENEMIES
+                self.frozen_enemies = False
+                print("Enemigos descongelados")
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_click = True
@@ -223,6 +278,8 @@ class Game:
 
 
 
+
+
         # Manejo de botones según el estado del juego
         if self.state == GameState.MENU:
             self.start_button.check_hover(mouse_pos)
@@ -246,6 +303,7 @@ class Game:
             return
 
         current_level = self.levels[self.current_level_index]
+        self.player.update_phase_effect(current_level)
         keys = pygame.key.get_pressed()
 
         # Movimiento del jugador
@@ -332,8 +390,11 @@ class Game:
     def draw_menu(self):
         self.background.update()
         self.background.draw(window)
-        title = TITLE_FONT.render("BOMB'S BEFORE", True, WHITE)
-        window.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 3))
+        if self.title_image:
+            window.blit(self.title_image, self.title_rect)
+        else:
+            title = TITLE_FONT.render("BOMB'S BEFORE", True, WHITE)
+            window.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 3))
         self.start_button.draw(window)
 
     def draw_character_select(self):

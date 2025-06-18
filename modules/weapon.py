@@ -6,9 +6,13 @@ class Weapon:
         self.owner = owner
         self.bullets = []
         self.cooldown = 0
-        self.damage = 0.5
+        self.base_damage = 1
+        self.damage = self.base_damage
         self.speed=10
         self.max_bullets = 10
+
+    def apply_damage_boost(self, amount):
+        self.damage += self.base_damage + amount
 
     def shoot(self, direction):
         if self.cooldown <= 0 and len(self.bullets) < self.max_bullets:

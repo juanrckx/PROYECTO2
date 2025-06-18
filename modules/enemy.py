@@ -3,30 +3,33 @@ from modules.utils import TILE_SIZE
 import random
 
 class Enemy:
-    def __init__(self, x, y, enemy_type):
+    def __init__(self, x, y, enemy_type, game):
         self.type = enemy_type
         self.rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
         self.set_attributes()
         self.direction = pygame.Vector2(0, 0)
         self.change_direction_timer = 0
         self.state = "moving"  # moving, tired, dead
+        self.game = game
 
 
     def set_attributes(self):
         if self.type == 1:  # Normal
             self.speed = 2  # Aumentada velocidad
-            self.health = 1
+            self.health = 2
             self.color = (255, 0 ,0)
         elif self.type == 2:  # Fast
             self.speed = 4  # Aumentada velocidad
-            self.health = 1
+            self.health = 2
             self.color = (255, 165, 0)
         elif self.type == 3:  # Tank
             self.speed = 1.5  # Reducida velocidad
-            self.health = 2
+            self.health = 4
             self.color = (139, 69, 19)
 
     def update(self, game_map):
+        if hasattr(self, 'game') and getattr(self.game, 'frozen_enemies', False):
+            return
         if self.state == "dead":
             return
 

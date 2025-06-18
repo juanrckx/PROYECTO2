@@ -1,5 +1,5 @@
 import pygame
-from modules.utils import ORANGE, TILE_SIZE, FPS
+from modules.utils import  TILE_SIZE, FPS
 
 class Bomb:
     def __init__(self, x, y, player, timer=3, bomb_range=1):
