@@ -1,4 +1,3 @@
-import random
 import sys
 import pygame
 
@@ -126,7 +125,7 @@ class Game:
             self.player = Player(1, 1, 5, 2, GREEN, 2, 1)
         elif character_type == 2:  # Pyro
             self.player = Player(1, 1, 2, 5, RED, 4, 2)
-        elif character_type == 3:
+        elif character_type == 3: #Cleric
             self.player = Player(1, 1, 2, 4, WHITE, 2, 3)
 
         self.ensure_starting_position()
@@ -198,6 +197,17 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.state = GameState.MENU
 
+        keys = pygame.key.get_pressed()
+        if self.state == GameState.GAME:
+            if keys[pygame.K_UP]:
+                self.player.shoot("up")
+            elif keys[pygame.K_DOWN]:
+                self.player.shoot("down")
+            elif keys[pygame.K_LEFT]:
+                self.player.shoot("left")
+            elif keys[pygame.K_RIGHT]:
+                self.player.shoot("right")
+
 
 
 
@@ -235,15 +245,57 @@ class Game:
         if keys[pygame.K_a]: dx = -1
         if keys[pygame.K_d]: dx = 1
 
-        self.player.move(dx, dy, current_level.map)
+        self.player.move(dx, dy, current_level.map, current_level)
 
         for enemy in current_level.enemies:
             enemy.update(current_level.map)
 
+        self.player.update_weapon()
+
+        for bullet in self.player.weapon.bullets[:]:
+            for enemy in current_level.enemies[:]:
+                if bullet.rect.colliderect(enemy.rect):
+                    enemy.take_damage(bullet.damage)
+                    self.player.weapon.bullets.remove(bullet)
+                    if enemy.state == "dead":
+                        current_level.enemies.remove(enemy)
+                    break
+
+        print(f"Balas activas: {len(self.player.weapon.bullets)}")
+        print(f"Enemigos vivos: {len(current_level.enemies)}")
+
         for bomb in self.player.bombs[:]:
-            if bomb.update():
+            if bomb.update(current_level):
                 current_level.check_bomb_collisions(bomb, self.player)
                 self.player.bombs.remove(bomb)
+
+
+
+        for enemy in current_level.enemies:
+            if (enemy.state != "dead" and
+                    self.player.hitbox.colliderect(enemy.rect) and
+                    not self.player.invincible):
+
+                self.player.take_damage()
+                if self.player.take_damage():
+                    self.player.update_invincibility()
+
+            if self.player.lives <= 0:
+                self.state = GameState.GAME_OVER
+                return
+
+        current_level = self.levels[self.current_level_index]
+        if current_level.key and not current_level.key.collected:
+            if any(block.revealed_key for block in current_level.map if hasattr(block, 'has_key') and block.has_key):
+                current_level.key.draw(window)
+                current_level.key_collected = True
+                self.player.key_collected = True
+                current_level.open_door()
+
+        if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
+            self.next_level()
+            self.score += 500
+
 
 
 
@@ -308,6 +360,9 @@ class Game:
         for bomb in self.player.bombs:
             bomb.draw(window)
 
+        for powerup in current_level.powerups:
+            powerup.draw(window)
+
 
         # Dibujar jugador
         self.player.draw(window)
@@ -331,6 +386,14 @@ class Game:
             "Llave: " + ("Sí" if self.player.key_collected else "No"),
             True, WHITE)
         window.blit(key_text, (WIDTH // 2 - key_text.get_width() // 2, 10))
+
+        if self.player.stored_powerup:
+            powerup_sprite = Powerup._sprites[self.player.stored_powerup.type]
+            powerup_sprite = pygame.transform.scale(powerup_sprite, (32, 32))
+            window.blit(powerup_sprite, (WIDTH - 50, HEIGHT - 50))
+
+            # Texto descriptivo
+
 
 
     def draw_game_over(self):
@@ -356,12 +419,12 @@ class Game:
         restart = self.font.render("Haz clic para volver al menú", True, WHITE)
         window.blit(restart, (WIDTH // 2 - restart.get_width() // 2, HEIGHT // 2 + 100))
 
+    Powerup.load_sprites()
+
     def run(self):
         clock = pygame.time.Clock()
         running = True
         while running:
-
-            Powerup.load_sprites()
             running = self.handle_events()
             self.update()
             if self.state == GameState.GAME:

@@ -1,3 +1,4 @@
+from modules.powerups import Powerup
 from modules.utils import Difficulty, TILE_SIZE
 import random
 from modules.enemy import Enemy
@@ -171,6 +172,7 @@ class Level:
             key_block = random.choice(destructible_blocks)
             key_block.has_key = True
             self.key = Key(key_block.rect.x // TILE_SIZE, key_block.rect.y // TILE_SIZE)
+            key_block.revealed_key = False
 
 
 
@@ -220,7 +222,8 @@ class Level:
             # Actualizar bombas
     def check_bomb_collisions(self, bomb, player):
             if not bomb.exploded:
-                return
+                bomb.explode(self)
+            player_hit = False
             if bomb.exploded:
                     for block in self.map[:]:
                         if block.destructible and not block.destroyed:
@@ -229,19 +232,19 @@ class Level:
                                     block.destroyed = True
                                     self.map.remove(block)
                                     if random.random() <= 0.5 and len(self.powerups) < 5:
-                                        self.generate_powerup(player)
+                                        self.powerups.append(Powerup(block.rect.x, block.rect.y))
 
                                     if block.has_key and not block.revealed_key:
                                         block.revealed_key = True
-                                        block.key.rect.x = block.rect.x
-                                        block.key.rect.y = block.rect.y
-                                        block.key.collected = False
+                                        self.key.rect.x = block.rect.x
+                                        self.key.rect.y = block.rect.y
+                                        self.key.collected = False
 
                                     break
 
                     for exp_rect in bomb.explosion_rects:
-                        if player.hitbox.colliderect(exp_rect) and not player.invincible:
-                            player.lives -= 1
+                        if not player_hit and player.hitbox.colliderect(exp_rect) and not player.invincible:
+                            player_hit = True
                             player.take_damage()
                             break
 
@@ -253,16 +256,4 @@ class Level:
                                     if enemy.state == "dead":
                                         self.enemies.remove(enemy)
                                     break
-
-
-
-    def generate_powerup(self, player):
-        for powerup in self.powerups[:]:
-            powerup.update()
-            if not powerup.active:
-                self.powerups.remove(powerup)
-            elif player.rect.colliderect(powerup.rect):
-                if player.store_powerup(powerup):
-                    self.powerups.remove(powerup)
-
 

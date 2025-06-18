@@ -9,7 +9,8 @@ class Powerup:
 
     @classmethod
     def load_sprites(cls):
-        cls._sprites = {PowerupType.EXTRA_LIFE: pygame.image.load("assets/textures/powerups/life_up2.png").convert_alpha(),
+        if cls._sprites is None:
+            cls._sprites = {PowerupType.EXTRA_LIFE: pygame.image.load("assets/textures/powerups/life_up2.png").convert_alpha(),
                         PowerupType.EXTRA_BOMB: pygame.image.load("assets/textures/powerups/bomb_up.png").convert_alpha(),
                         PowerupType.EXTRA_VELOCITY: pygame.image.load("assets/textures/powerups/speedup.png").convert_alpha(),
                         PowerupType.EXPLOSION_RANGE: pygame.image.load("assets/textures/powerups/dmg_up.png").convert_alpha(),

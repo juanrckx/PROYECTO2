@@ -1,6 +1,7 @@
 import pygame
 from modules.utils import RED, TILE_SIZE, PowerupType
 from modules.bomb import Bomb
+from modules.weapon import Weapon
 
 class Player:
     def __init__(self, x, y, lives, speed, color, bomb_capacity, character_type):
@@ -25,7 +26,7 @@ class Player:
 
         self.invincible = False
         self.invincible_frames = 0
-        self.invincible_duration = 140  # Duración de invincibilidad (frames)
+        self.invincible_duration = 140  # Duración de invencibilidad (frames)
         self.visible = True
 
         self.stored_powerup = None
@@ -33,6 +34,8 @@ class Player:
             "bomb_immune": False,
             "phase_through": False,
             "frozen_enemies": False}
+
+        self.weapon = Weapon(self)
 
     def store_powerup(self, powerup):
         if self.stored_powerup is None:
@@ -47,8 +50,9 @@ class Player:
             self.lives += 1
         elif self.stored_powerup.type == PowerupType.EXTRA_BOMB:
             self.available_bombs += 1
+            self.bomb_capacity += 1
         elif self.stored_powerup.type == PowerupType.EXTRA_VELOCITY:
-            self.speed += 1
+            self.speed = min(self.speed + 1, 10)
         elif self.stored_powerup.type == PowerupType.EXPLOSION_RANGE:
             self.explosion_range += 1
         elif self.stored_powerup.type == PowerupType.BOMB_IMMUNITY:
@@ -64,7 +68,7 @@ class Player:
         self.stored_powerup = None
 
 
-    def move(self, dx, dy, game_map):
+    def move(self, dx, dy, game_map, current_level):
         # Movimiento diagonal permitido
         if dx != 0 and dy != 0:
             # Normalizar para mantener velocidad constante en diagonal
@@ -84,6 +88,14 @@ class Player:
             if not self.check_collision(new_hitbox, game_map):
                 self.hitbox.y = new_hitbox.y
                 self.rect.y = self.hitbox.y - 5
+
+        for powerup in current_level.powerups:
+            if self.hitbox.colliderect(powerup.rect):
+                if self.store_powerup(powerup):
+                    current_level.powerups.remove(powerup)
+
+
+
 
     def check_collision(self, rect, game_map):
         for block in game_map:
@@ -118,6 +130,15 @@ class Player:
             if self.invincible_frames % 6 == 0:
                 self.visible = not self.visible
 
+
+    def update_weapon(self):
+        self.update_invincibility()
+        self.weapon.update()
+
+    def shoot(self, direction):
+        self.weapon.shoot(direction)
+
+
     def get_explosion_pattern(self):
         if self.character_type == 2 or self.explosion_range > self.base_explosion_range:
             return "diamond"
@@ -129,3 +150,4 @@ class Player:
             pygame.draw.rect(surface, self.color, self.rect)
         if self.invincible:
                 pygame.draw.rect(surface, RED, self.rect, 2)
+        self.weapon.draw(surface)
