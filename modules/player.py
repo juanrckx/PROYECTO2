@@ -1,5 +1,5 @@
 import pygame
-from modules.utils import RED, TILE_SIZE, PowerupType, WIDTH, HEIGHT
+from modules.utils import TILE_SIZE, PowerupType, WIDTH, HEIGHT
 from modules.bomb import Bomb
 from modules.weapon import Weapon
 
