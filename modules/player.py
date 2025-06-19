@@ -17,7 +17,7 @@ class Player:
         self.current_animation = "idle"
         self.animation_frame = 0
         self.animation_speed = 0.2
-        self.idle_animation_speed = 0.3  # Más lento para idle
+        self.idle_animation_speed = 0.1  # Más lento para idle
         self.last_update = pygame.time.get_ticks()
         self.character_type = character_type
         self.base_explosion_range = 2 if character_type == 2 else 1
@@ -66,7 +66,8 @@ class Player:
             character_sprites = {
                 0: "bomber.png",
                 1: "tanky.png",
-                2: "pyro.png"
+                2: "pyro.png",
+                3: "cleric.png"
             }
 
             if character_type not in character_sprites:
@@ -86,8 +87,8 @@ class Player:
 
             direction_rows = {
                 0: "down",
-                1: "right",
-                2: "left",
+                1: "left",
+                2: "right",
                 3: "up"
             }
 
