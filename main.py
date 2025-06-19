@@ -211,11 +211,18 @@ class Game:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_click = True
 
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                self.spinning_roulette = True  # Iniciar animación
 
-        choice = self.interlevel_screen.get_choice(mouse_pos, mouse_click)
-        if choice is not None:
-            self.apply_choice(choice)
-            self.state = GameState.GAME
+        if self.spinning_roulette:
+            self.animate_roulette()
+        else:
+
+            choice = self.interlevel_screen.get_choice(mouse_pos, mouse_click)
+            if choice == 4:
+                self.spinning_roulette = True
+            elif choice is not None:
+                self.apply_choice(choice)
 
     def apply_choice(self, choice):
         if choice == 0:

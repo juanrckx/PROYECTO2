@@ -13,6 +13,12 @@ class Player:
         self.lives = lives
         self.speed = speed  # Aumentada la velocidad base
         self.color = color
+        self.animations = self.load_character_animations(character_type)
+        self.current_animation = "idle"
+        self.animation_frame = 0
+        self.animation_speed = 0.2
+        self.idle_animation_speed = 0.3  # Más lento para idle
+        self.last_update = pygame.time.get_ticks()
         self.character_type = character_type
         self.base_explosion_range = 2 if character_type == 2 else 1
         self.explosion_range = self.base_explosion_range
@@ -36,9 +42,106 @@ class Player:
 
         self.weapon = Weapon(self)
         self.damage = damage
-        #self.item = item
+        self.item_effect = {"speed_+5": False,
+                            "bullet_trace": False,
+                            "shotgun": False,
+                            "bullet_heal": False,
+                            "1life_shield": False,
+                            "double_damage": False,
+                            "revive": False,
+                            }
         self.game = game  # Guarda referencia
         self.was_phasing = None
+        self.facing = "down"
+        self.load_character_animations(character_type)
+
+    def load_character_animations(self, character_type):
+        """Carga animaciones con verificación de errores robusta"""
+        animations = {
+            "idle": {"down": [], "up": [], "left": [], "right": []},
+            "walk": {"down": [], "up": [], "left": [], "right": []}}
+
+
+        try:
+            character_sprites = {
+                0: "bomber.png",
+                1: "tanky.png",
+                2: "pyro.png"
+            }
+
+            if character_type not in character_sprites:
+                raise ValueError(f"Tipo de personaje {character_type} no válido")
+
+            sheet_path = f"assets/textures/characters/{character_sprites[character_type]}"
+
+            # 2. Cargar la imagen
+            sheet = pygame.image.load(sheet_path).convert_alpha()
+            print(f"Spritesheet cargada: {sheet_path} ({sheet.get_width()}x{sheet.get_height()})")
+
+            # 3. Calcular dimensiones de cada frame
+            cols = 3  # 3 columnas (frames de animación)
+            rows = 4  # 3 filas (direcciones)
+            frame_width = sheet.get_width() // cols
+            frame_height = sheet.get_height() // rows
+
+            direction_rows = {
+                0: "down",
+                1: "right",
+                2: "left",
+                3: "up"
+            }
+
+            # 4. Asignar frames a las animaciones
+            for row in range(rows):
+                direction = direction_rows[row]
+                for col in range(cols):
+                    # Extraer frame
+                    frame = pygame.Surface((frame_width, frame_height), pygame.SRCALPHA)
+                    frame.blit(sheet, (0, 0), (col * frame_width, row * frame_height, frame_width, frame_height))
+                    scaled_frame = pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE))
+
+                    # Para walk: usar los 3 frames
+                    animations["walk"][direction].append(scaled_frame)
+
+                    # Para idle: usar el frame central (col=1)
+                    if col == 1:
+                        animations["idle"][direction].append(scaled_frame)
+
+                        # Opcional: crear 2-3 frames de idle con variaciones sutiles
+                        for i in range(2):
+                            modified_frame = scaled_frame.copy()
+                            # Pequeña modificación para frame alternativo
+                            if i == 0:
+                                pygame.draw.rect(modified_frame, (0, 0, 0, 10), (0, 0, TILE_SIZE, 1))  # Sombra superior
+                            animations["idle"][direction].append(modified_frame)
+
+        except Exception as e:
+            print(f"Error cargando animaciones: {e}")
+            # Crear fallback
+            fallback_frame = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+            pygame.draw.rect(fallback_frame, self.color, (0, 0, TILE_SIZE, TILE_SIZE))
+            for anim in animations:
+                for direction in animations[anim]:
+                    animations[anim][direction] = [fallback_frame]
+
+        return animations
+
+
+    def update_animation(self):
+        """Actualiza la animación actual"""
+        now = pygame.time.get_ticks()
+        if now - self.last_update > self.animation_speed * 1000:
+            self.last_update = now
+
+            current_anim = self.animations[self.current_animation][self.facing]
+
+            # Lógica diferente para walk vs idle
+            if self.current_animation == "walk":
+                # Ciclo completo de 3 frames (0-1-2-0...)
+                self.animation_frame = (self.animation_frame + 1) % 3
+            else:
+                # Para idle: ciclo más lento entre los frames disponibles
+                self.animation_frame = (self.animation_frame + 0.15) % len(current_anim)
 
     def store_powerup(self, powerup):
         if self.stored_powerup is None:
@@ -82,30 +185,59 @@ class Player:
 
         self.stored_powerup = None
 
-    def apply_item_effect(self, effect):
-        if effect == "speed_+5":
+    def apply_item_effect(self, effect_name):
+        self.reset_item_effects()
+
+        if effect_name == "speed_+5":
+            self.item_effect["speed_+5"] = True
+            self.base_speed = self.speed
             self.speed += 5
 
-        elif effect == "bullet_trace":
-            self.bullet_trace = True
+        elif effect_name == "bullet_trace":
+            self.item_effect["bullet_trace"] = True
 
-        elif effect == "shotgun":
-            self.shotgun = True
+        elif effect_name == "shotgun":
+            self.item_effect["shotgun"] = True
 
-        elif effect == "bullet_heal":
-            self.bullet_heal = True
+        elif effect_name == "bullet_heal":
+            self.item_effect["bullet_heal"] = True
 
-        elif effect == "1life_shield":
-            self.shield = True
+        elif effect_name == "1life_shield":
+            self.item_effect["1life_shield"] = True
 
-        elif effect == "double_damage":
+        elif effect_name == "double_damage":
+            self.item_effect["double_damage"] = True
+            self.base_damage = self.damage
             self.damage += 5
-            self.damage_multiplier = 2.0
-        elif effect == "revive":
-            self.revive_capacity = True
+
+    def reset_item_effects(self):
+            self.item_effect["speed_+5"] = False
+            self.item_effect["bullet_trace"] = False
+            self.item_effect["shotgun"] = False
+            self.item_effect["bullet_heal"] = False
+            self.item_effect["1life_shield"] = False
+            self.item_effect["double_damage"] = False
+            if self.item_effect["speed_+5"]:
+                self.speed = self.base_speed
+            if self.item_effect["double_damage"]:
+                self.damage = self.base_damage
+            self.item_effect = {k: False for k in self.item_effects()
+                                }
 
 
     def move(self, dx, dy, game_map, current_level):
+
+        if dx < 0:
+            self.facing = "left"
+        elif dx > 0:
+            self.facing = "right"
+        elif dy < 0:
+            self.facing = "up"
+        elif dy > 0:
+            self.facing = "down"
+
+        is_moving = dx != 0 or dy != 0
+        new_animation = "walk" if is_moving else "idle"
 
         if self.active_effects.get("phase_through", False):
             # Movimiento sin colisiones (excepto bordes del mapa)
@@ -115,13 +247,22 @@ class Player:
             self.hitbox.y = self.rect.y + 5
         else:
             # Movimiento diagonal permitido
-            if dx != 0 and dy != 0:
-                # Normalizar para mantener velocidad constante en diagonal
+            if is_moving:
                 dx = dx * 0.7071
                 dy = dy * 0.7071
+                if self.current_animation != new_animation:
+                    self.current_animation = new_animation
+                    self.animation_frame = 0  # Reiniciar al primer frame de walk
+                # Normalizar para mantener velocidad constante en diagonal
+
+            else:
+                if self.current_animation != "idle":
+                    self.current_animation = "idle"
+                    self.animation_frame = 0  # Reiniciar animación idle
 
             # Movimiento en X
             if dx != 0:
+
                 new_hitbox = self.hitbox.move(dx * self.speed, 0)
                 if not self.check_collision(new_hitbox, game_map):
                     self.hitbox.x = new_hitbox.x
@@ -134,6 +275,10 @@ class Player:
                     self.hitbox.y = new_hitbox.y
                     self.rect.y = self.hitbox.y - 5
 
+
+
+
+
         for powerup in current_level.powerups:
             if self.hitbox.colliderect(powerup.rect):
                 if self.store_powerup(powerup):
@@ -141,6 +286,7 @@ class Player:
 
         self.rect.x = max(0, min(WIDTH - TILE_SIZE, self.rect.x))
         self.rect.y = max(0, min(HEIGHT - TILE_SIZE, self.rect.y))
+        self.update_animation()
 
 
 
@@ -171,12 +317,14 @@ class Player:
         if self.invincible:
             self.invincible_frames -= 1
 
+            if self.invincible_frames % 6 == 0:
+                self.visible = not self.visible
+
             if self.invincible_frames <= 0:
                 self.invincible = False
                 self.visible = True
 
-            if self.invincible_frames % 6 == 0:
-                self.visible = not self.visible
+
 
 
     def update_weapon(self, current_level):
@@ -223,8 +371,24 @@ class Player:
         return self.rect.x, self.rect.y  # Si no encuentra, mantiene posición (poco probable)
 
     def draw(self, surface):
-        if not self.invincible or self.visible:
+        if not self.visible:
+            return
+
+        try:
+            # Para walk: frame_index entero (0-1-2)
+            if self.current_animation == "walk":
+                frame_index = int(self.animation_frame) % 3
+            # Para idle: frame_index puede ser float para transiciones suaves
+            else:
+                frame_index = int(self.animation_frame) % len(self.animations["idle"][self.facing])
+
+            current_frame = self.animations[self.current_animation][self.facing][frame_index]
+            surface.blit(current_frame, self.rect)
+
+
+
+        except Exception as e:
+            print(f"Error dibujando: {e}")
             pygame.draw.rect(surface, self.color, self.rect)
-        if self.invincible:
-                pygame.draw.rect(surface, RED, self.rect, 2)
+
         self.weapon.draw(surface)

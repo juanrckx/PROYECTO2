@@ -21,9 +21,20 @@ class InterLevelScreen:
             {"name": "VI The Lovers", "effect": "bullet_heal"},
             {"name": "VII The Chariot", "effect": "1life_shield"},
             {"name": "XV The Devil", "effect": "double_damage"},
-            {"name": "XIX The Sun", "effect": "revive"}
+            {"name": "XIX The Sun", "effect": "revive"}]
 
-        ]
+        self.item_images = {"O The Fool": pygame.image.load("assets/textures/items/the_fool.png").convert_alpha(),
+                            "I The Magician": pygame.image.load("assets/textures/items/the_magician.png").convert_alpha(),
+                            "II The High Priestess": pygame.image.load("assets/textures/items/the_high_priestess.png").convert_alpha(),
+                            "VI The Lovers": pygame.image.load("assets/textures/items/the_lovers.png").convert_alpha(),
+                            "VII The Chariot": pygame.image.load("assets/textures/items/the_chariot.png").convert_alpha(),
+                            "XV The Devil": pygame.image.load("assets/textures/items/the_chariot.png").convert_alpha(),
+                            "XIX The Sun": pygame.image.load("assets/textures/items/the_sun.png").convert_alpha()
+                            }
+
+        for item in self.item_images:
+            self.item_images[item] = pygame.transform.scale(self.item_images[item], (64, 64))
+
 
     def draw(self, surface):
         surface.fill(BLACK)
@@ -42,3 +53,4 @@ class InterLevelScreen:
         # Animación de ruleta
         selected = random.randint(0, len(self.items) - 1)
         return self.items[selected]
+
