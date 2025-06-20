@@ -12,7 +12,7 @@ class Button:
         self.is_hovered = False
 
     def draw(self, surface):
-        color = self.hover_color if self.is_hovered else self.color
+        #color = self.hover_color if self.is_hovered else self.color
         pygame.draw.rect(surface, (60, 51, 51), self.rect, 2, border_radius=10)
         text_surf = self.font.render(self.text, True, WHITE)
         text_rect = text_surf.get_rect(center=self.rect.center)

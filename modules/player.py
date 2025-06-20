@@ -1,3 +1,5 @@
+import random
+
 import pygame
 from modules.utils import TILE_SIZE, PowerupType, WIDTH, HEIGHT
 from modules.bomb import Bomb
@@ -42,14 +44,19 @@ class Player:
 
         self.weapon = Weapon(self)
         self.damage = damage
-        self.item_effect = {"speed_+5": False,
+        self.item_effects = {"speed_+5": False,
                             "bullet_trace": False,
                             "shotgun": False,
                             "bullet_heal": False,
                             "1life_shield": False,
                             "double_damage": False,
                             "revive": False,
-                            }
+                            "superbomb": False}
+        self.has_shield = False
+        self.revive_chance = 0
+        self.bullet_hits = 0
+        self.enemy_damage_multiplier = 0
+        self.bomb_pierce_indestructible = False
         self.game = game  # Guarda referencia
         self.was_phasing = None
         self.facing = "down"
@@ -187,43 +194,54 @@ class Player:
         self.stored_powerup = None
 
     def apply_item_effect(self, effect_name):
+        # Resetear efectos previos si es necesario
         self.reset_item_effects()
 
-        if effect_name == "speed_+5":
-            self.item_effect["speed_+5"] = True
-            self.base_speed = self.speed
+        if effect_name == "speed_boost":
             self.speed += 5
+            self.item_effects["speed_boost"] = True
 
-        elif effect_name == "bullet_trace":
-            self.item_effect["bullet_trace"] = True
+        elif effect_name == "homing_bullets":
+            self.item_effects["homing_bullets"] = True
 
         elif effect_name == "shotgun":
-            self.item_effect["shotgun"] = True
+            self.item_effects["shotgun"] = True
 
         elif effect_name == "bullet_heal":
-            self.item_effect["bullet_heal"] = True
+            self.item_effects["bullet_heal"] = True
+            self.bullet_hits = 0
 
-        elif effect_name == "1life_shield":
-            self.item_effect["1life_shield"] = True
+        elif effect_name == "one_shield":
+            self.has_shield = True
+            self.item_effects["one_shield"] = True
 
         elif effect_name == "double_damage":
-            self.item_effect["double_damage"] = True
-            self.base_damage = self.damage
             self.damage += 5
+            self.enemy_damage_multiplier = 2
+            self.item_effects["double_damage"] = True
+
+        elif effect_name == "revive_chance":
+            self.revive_chance = 0.25
+            self.item_effects["revive_chance"] = True
+
+        elif effect_name == "indestructible_bomb":
+            self.bomb_pierce_indestructible = True
+            self.item_effects["indestructible_bomb"] = True
 
     def reset_item_effects(self):
-            self.item_effect["speed_+5"] = False
-            self.item_effect["bullet_trace"] = False
-            self.item_effect["shotgun"] = False
-            self.item_effect["bullet_heal"] = False
-            self.item_effect["1life_shield"] = False
-            self.item_effect["double_damage"] = False
-            if self.item_effect["speed_+5"]:
-                self.speed = self.base_speed
-            if self.item_effect["double_damage"]:
-                self.damage = self.base_damage
-            self.item_effect = {k: False for k in self.item_effects()
-                                }
+                # Restablecer todos los efectos de items
+        if "speed_boost" in self.item_effects:
+            self.speed /= 1.5
+        if "double_damage" in self.item_effects:
+            self.damage -= 5
+            self.enemy_damage_multiplier = 1
+
+        self.item_effects = {}
+        self.has_shield = False
+        self.revive_chance = 0
+        self.bomb_pierce_indestructible = False
+
+
 
 
     def move(self, dx, dy, game_map, current_level):
@@ -306,10 +324,21 @@ class Player:
             self.available_bombs -= 1  # Consumir bomba
 
     def take_damage(self):
+        if self.has_shield:
+            self.has_shield = False
+            self.invincible = True
+            self.invincible_frames = self.invincible_duration
+            return False
+
         if not self.invincible:
             self.lives -= 1
             self.invincible = True
             self.invincible_frames = self.invincible_duration
+
+            if self.lives <= 0 and random.random() < self.revive_chance:
+                self.lives = 1
+                return False
+
             return True
         return False
 

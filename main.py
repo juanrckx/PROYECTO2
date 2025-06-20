@@ -1,6 +1,5 @@
 import sys
 import pygame
-import random
 
 from modules.interlevelscreen import InterLevelScreen
 from modules.powerups import Powerup
@@ -39,6 +38,7 @@ Mejora de una estadistica al terminar un nivel
 #Tus ataque persiguen a los enemigos - I The Magician
 #Escopeta - II The High Priestess
 #Cada 20 ataques que inflingan daño te curas 1 corazón - VI The Lovers 
+#Las bombas destruyen bloques indestructibles - The Tower
 class Items:
 
 
@@ -118,6 +118,10 @@ class Game:
             #["Vida: 2", "Velocidad: 2", "Bombas: 2"]
         ]
 
+        self.interlevel_screen = None
+        self.spinning_roulette = False
+        self.item_selected = None
+
 
         try:
             self.title_image = pygame.image.load("assets/textures/bg/title2.png").convert_alpha()
@@ -172,6 +176,8 @@ class Game:
     def next_level(self):
         self.state = GameState.INTERLEVEL
         self.interlevel_screen = InterLevelScreen(self.player)
+        self.spinning_roulette = False
+        self.item_selected = None
         if self.current_level_index >= len(self.levels) - 1:
             self.state = GameState.VICTORY
             return False
@@ -207,22 +213,20 @@ class Game:
     def handle_interlevel_events(self):
         mouse_pos = pygame.mouse.get_pos()
         mouse_click = False
+
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_click = True
 
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                self.spinning_roulette = True  # Iniciar animación
+        choice = self.interlevel_screen.get_choice(mouse_pos, mouse_click)
 
-        if self.spinning_roulette:
-            self.animate_roulette()
-        else:
-
-            choice = self.interlevel_screen.get_choice(mouse_pos, mouse_click)
-            if choice == 4:
-                self.spinning_roulette = True
-            elif choice is not None:
-                self.apply_choice(choice)
+        if choice == "skip":
+            self.state = GameState.GAME
+        elif choice is not None and not self.interlevel_screen.showing_item:
+            self.apply_choice(choice)
+        elif self.interlevel_screen.item_confirmed:
+            self.apply_item_effect(self.interlevel_screen.selected_item["effect"])
+            self.state = GameState.GAME
 
     def apply_choice(self, choice):
         if choice == 0:
@@ -233,9 +237,11 @@ class Game:
             self.player.speed += 2
         if choice == 3:
             self.player.damage += 2
-        if choice == 4:
-            item = random.choice(self.interlevel_screen.items)
-            self.apply_item_effect(item["effect"])
+
+        self.state = GameState.GAME
+
+    def apply_item_effect(self, effect_name):
+        self.player.apply_item_effect(effect_name)
 
 
     def handle_events(self):
@@ -386,6 +392,8 @@ class Game:
             self.draw_character_select()
         elif self.state == GameState.GAME:
             self.draw_game()
+        elif self.state == GameState.INTERLEVEL:
+            self.interlevel_screen.draw(window)
         elif self.state == GameState.GAME_OVER:
             self.draw_game_over()
         elif self.state == GameState.VICTORY:
