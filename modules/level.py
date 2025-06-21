@@ -107,7 +107,7 @@ class Level:
                     break
 
                 block_exists = any(b.rect.x == px * TILE_SIZE and b.rect.y == py *
-                                   TILE_SIZE and not b.destructible for b in self.map)
+                                   TILE_SIZE for b in self.map)
 
                 if not block_exists and (px, py) != (x, y):
                     all_blocks_indestructible = False
@@ -221,47 +221,39 @@ class Level:
             if not blocked and not enemy_near:
                 return x, y
 
+    def is_border_block(self, block):
+        """Verifica si un bloque es parte del borde indestructible del mapa"""
+        return (block.rect.x <= 0 or
+                block.rect.y <= 0 or
+                block.rect.x >= (19 * TILE_SIZE) or  # 20 columnas (0-19)
+                block.rect.y >= (14 * TILE_SIZE))  # 15 filas (0-14)
+
             # Actualizar bombas
     def check_bomb_collisions(self, bomb, player):
-            if not bomb.exploded:
-                bomb.explode(self)
-            player_hit = False
-            if bomb.exploded:
-                    for block in self.map[:]:
-                        if block.destructible and not block.destroyed:
-                            for exp_rect in bomb.explosion_rects:
-                                if block.rect.colliderect(exp_rect):
-                                    block.destroyed = True
-                                    self.map.remove(block)
-                                    if random.random() <= 0.7 and len(self.powerups) < 5:
-                                        self.powerups.append(Powerup(block.rect.x, block.rect.y))
+        if not bomb.exploded:
+            bomb.explode(player, self)  # Asegurarnos de pasar player y self
 
-                                    if (getattr(block, 'has_key') and
-                                            block.has_key and not block.revealed_key):
-                                        self.key.rect.x = block.rect.x
-                                        self.key.rect.y = block.rect.y
-                                        self.key.collected = False
-                                        self.key.revealed = True
-                                    if not (hasattr(block, 'has_key') and block.has_key):
-                                        if block in self.map:
-                                            self.map.remove(block)
+        for block in self.map[:]:  # Usamos copia para modificar durante iteración
+            for exp_rect in bomb.explosion_rects:
+                if block.rect.colliderect(exp_rect):
+                    # BLOQUES INDESTRUCTIBLES (excepto bordes)
+                    if (player.item_effects.get("indestructible_bomb")
+                            and not block.destructible
+                            and not self.is_border_block(block)):
+                        block.destroyed = True
+                        self.map.remove(block)
 
-                                    break
+                    # BLOQUES DESTRUCTIBLES (comportamiento normal)
+                    elif block.destructible:
+                        block.destroyed = True
+                        self.map.remove(block)
 
-                    for exp_rect in bomb.explosion_rects:
-                        if not player_hit and player.hitbox.colliderect(exp_rect) and not player.invincible and not player.active_effects.get("bomb_immune", False):
-                            player_hit = True
-                            player.take_damage()
-                            break
+                        # Generar powerups y manejar llaves
+                        if random.random() <= 0.7 and len(self.powerups) < 5 and not block.has_key:
+                            self.powerups.append(Powerup(block.rect.x, block.rect.y))
 
-                    for enemy in self.enemies[:]:  # Usamos copia para poder modificar la lista
-                        if enemy.state != "dead":
-                            for exp_rect in bomb.explosion_rects:
-                                if enemy.rect.colliderect(exp_rect):
-                                    enemy.take_damage(amount=2)
-                                    if enemy.state == "dead":
-                                        self.enemies.remove(enemy)
-                                    break
-
-
-
+                        if getattr(block, 'has_key', False) and not getattr(block, 'revealed_key', False):
+                            self.key.revealed = True
+                            self.key.rect.x = block.rect.x
+                            self.key.rect.y = block.rect.y
+                    break

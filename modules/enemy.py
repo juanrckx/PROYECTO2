@@ -16,15 +16,15 @@ class Enemy:
     def set_attributes(self):
         if self.type == 1:  # Normal
             self.speed = 2  # Aumentada velocidad
-            self.health = 2
+            self.health = 5
             self.color = (255, 0 ,0)
         elif self.type == 2:  # Fast
             self.speed = 4  # Aumentada velocidad
-            self.health = 2
+            self.health = 5
             self.color = (255, 165, 0)
         elif self.type == 3:  # Tank
             self.speed = 1.5  # Reducida velocidad
-            self.health = 4
+            self.health = 5
             self.color = (139, 69, 19)
 
     def update(self, game_map):
@@ -63,8 +63,9 @@ class Enemy:
             # Si no puede moverse, cambiar dirección inmediatamente
             self.change_direction_timer = 60  # Forzar cambio de dirección
 
-    def take_damage(self, amount):
+    def enemy_take_damage(self, amount):
         self.health -= amount
+        print(self.health)
         if self.health <= 0:
             self.state = "dead"
 

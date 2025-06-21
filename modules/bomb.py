@@ -23,13 +23,17 @@ class Bomb:
         return self.explosion_timer <= 0
 
 
+
     def explode(self, player, current_level):
         self.exploded = True
         self.explosion_rects = [self.rect]
-        explosion_type = player.get_explosion_pattern()
 
-        # Explosión en forma de cruz con rango limitado
-        for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:  # Direcciones base
+        # Definir patrones de explosión
+        base_pattern = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+        if player.get_explosion_pattern() == "diamond":
+            base_pattern.extend([(1, 1), (-1, 1), (1, -1), (-1, -1), (2, 0), (0, 2), (-2, 0), (0, -2)])
+
+        for dx, dy in base_pattern:
             for i in range(1, self.range + 1):
                 new_rect = pygame.Rect(
                     self.rect.x + dx * i * TILE_SIZE,
@@ -37,27 +41,20 @@ class Bomb:
                     TILE_SIZE, TILE_SIZE
                 )
 
-                # Verifica colisión con bloques indestructibles
-                block_collision = any(
-                    not block.destructible and block.rect.colliderect(new_rect)
-                    for block in current_level.map
-                )
-                if block_collision:
-                    break  # Detiene la explosión en esta dirección
+                # Solo verificar colisión si NO tenemos indestructible_bomb
+                if not player.item_effects.get("indestructible_bomb"):
+                    if any(not block.destructible and block.rect.colliderect(new_rect)
+                           for block in current_level.map):
+                        break
 
-                if new_rect not in self.explosion_rects:
-                    self.explosion_rects.append(new_rect)
+                self.explosion_rects.append(new_rect)
 
-            # Añade explosión en diamante si es necesario (para Pyro o powerup)
-            if explosion_type == "diamond" or self.player.character_type == 2:
-                for dx, dy in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:  # Diagonales
-                    diamond_rect = pygame.Rect(
-                        self.rect.x + dx * i * TILE_SIZE,
-                        self.rect.y + dy * i * TILE_SIZE,
-                        TILE_SIZE, TILE_SIZE
-                    )
-                    if diamond_rect not in self.explosion_rects:
-                        self.explosion_rects.append(diamond_rect)
+
+
+
+
+
+
 
 
     def draw(self, surface):

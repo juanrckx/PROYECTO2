@@ -10,7 +10,7 @@ from modules.utils import GameState, Difficulty, GRAY, GREEN, RED, BLUE, BLACK, 
 
 '''
 
-Boss Fight
+Boss Fight      
 #Bomb Lord:
 #Coloca 5 bombas en posiciones aleatorias
 #Puede invertir los controles del jugador
@@ -30,16 +30,7 @@ Ambientacion
 
 
 #EN PROCESO
-Mejora de una estadistica al terminar un nivel
-#Los enemigos hacen el doble de danio pero tu daño incrementa en +5 - XV The Devil
-# x1.5 De velocidad por todo el juego - O The Fool
-#El siguiente hit no te hace dano - VII The Chariot
-# Por todo el juego tienes una probabilidad de revivir de un 25% con 1 de vida - XIX The Sun
-#Tus ataque persiguen a los enemigos - I The Magician
-#Escopeta - II The High Priestess
-#Cada 20 ataques que inflingan daño te curas 1 corazón - VI The Lovers 
-#Las bombas destruyen bloques indestructibles - The Tower
-class Items:
+
 
 
 Pantalla de configuraciones
@@ -142,18 +133,19 @@ class Game:
 
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(1, 1, 3, 3, BLUE, 51, 0, self)
+            self.player = Player(1, 1, 3, 3, BLUE, 51, 0,  self )
         elif character_type == 1:  # Tanky
-            self.player = Player(1, 1, 5, 2, GREEN, 3, 1, self)
+            self.player = Player(1, 1, 5, 2, GREEN, 3, 1,  self)
         elif character_type == 2:  # Pyro
-            self.player = Player(1, 1, 2, 5, RED, 8, 2, self)
+            self.player = Player(1, 1, 2, 5, RED, 8, 2,  self)
         elif character_type == 3: #Cleric
-            self.player = Player(1, 1, 2, 4, WHITE, 4, 3, self)
+            self.player = Player(1, 1, 2, 4, WHITE, 4, 3,  self)
 
         self.ensure_starting_position()
         self.score = 0
         self.start_time = pygame.time.get_ticks()
         self.state = GameState.GAME
+
 
     def ensure_starting_position(self):
         """Garantiza que el área inicial esté despejada"""
@@ -174,74 +166,112 @@ class Game:
         ]
 
     def next_level(self):
+        """Transición al siguiente nivel con reinicio de estados"""
+        # 1. Cambiar estado y crear pantalla de selección
         self.state = GameState.INTERLEVEL
         self.interlevel_screen = InterLevelScreen(self.player)
-        self.spinning_roulette = False
-        self.item_selected = None
+
+        # 2. Verificar si es el último nivel
         if self.current_level_index >= len(self.levels) - 1:
             self.state = GameState.VICTORY
             return False
 
+        # 3. Preparar el siguiente nivel
         self.current_level_index += 1
-
         current_level = self.levels[self.current_level_index]
         current_level.__init__(current_level.number, current_level.difficulty, self)
 
-            # Reposicionar al jugador
+        # 4. Resetear propiedades del jugador
+        self._reset_player_for_new_level()
+
+        # 5. Limpiar efectos temporales
+        self._clear_temporary_effects()
+
+        return True
+
+    def _reset_player_for_new_level(self):
+        """Reinicia propiedades del jugador para el nuevo nivel"""
         self.player.rect.x = TILE_SIZE
         self.player.rect.y = TILE_SIZE
         self.player.hitbox.x = self.player.rect.x + 5
         self.player.hitbox.y = self.player.rect.y + 5
-
         self.player.key_collected = False
+        self.player.available_bombs = self.player.bomb_capacity  # Recargar bombas
         self.player.invincible = False
         self.player.visible = True
 
-        self.ensure_starting_position()
-
+    def _clear_temporary_effects(self):
+        """Limpia efectos que no deben persistir entre niveles"""
         self.player.active_effects = {
             "bomb_immune": False,
             "phase_through": False
         }
         self.frozen_enemies = False
-
-        # Resetear arma
         self.player.weapon.damage = self.player.weapon.base_damage
-        self.player.weapon.speed = 10  # Velocidad base
+        self.player.weapon.speed = 10
+
+
+
+    def _handle_skip_choice(self):
+        if not self.next_level():
+            self.state = GameState.VICTORY
+        else:
+            self.state = GameState.GAME
         return True
 
-    def handle_interlevel_events(self):
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_click = False
-
-        for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_click = True
-
-        choice = self.interlevel_screen.get_choice(mouse_pos, mouse_click)
-
-        if choice == "skip":
+    def _handle_stat_choice(self, choice):
+        self.apply_choice(choice)
+        if not self.next_level():
+            self.state = GameState.VICTORY
+        else:
             self.state = GameState.GAME
-        elif choice is not None and not self.interlevel_screen.showing_item:
-            self.apply_choice(choice)
-        elif self.interlevel_screen.item_confirmed:
-            self.apply_item_effect(self.interlevel_screen.selected_item["effect"])
-            self.state = GameState.GAME
+        return True
 
-    def apply_choice(self, choice):
-        if choice == 0:
-            self.player.bomb_capacity += 2
-        if choice == 1:
-            self.player.health += 2
-        if choice == 2:
-            self.player.speed += 2
-        if choice == 3:
-            self.player.damage += 2
-
-        self.state = GameState.GAME
-
-    def apply_item_effect(self, effect_name):
+    def _handle_item_choice(self, effect_name):
         self.player.apply_item_effect(effect_name)
+        if not self.next_level():
+            self.state = GameState.VICTORY
+        else:
+            self.state = GameState.GAME
+        return True
+
+    def apply_choice(self, choice: int):
+        """Aplica la mejora de estadística seleccionada"""
+        stat_boost = {
+            0: ("bomb_capacity", 1),
+            1: ("lives", 1),
+            2: ("speed", 1),
+            3: ("damage", 1)
+        }
+
+        stat, amount = stat_boost[choice]
+        current_value = getattr(self.player, stat)
+        setattr(self.player, stat, current_value + amount)
+
+        # Caso especial para bombas
+        if choice == 0:
+            self.player.available_bombs = self.player.bomb_capacity
+
+    def apply_item_effect(self, effect_name: str):
+        """Aplica el efecto de un ítem especial"""
+        effect_mapping = {
+            "speed_boost": lambda: setattr(self.player, "speed", self.player.speed * 1.5),
+            "homing_bullets": lambda: setattr(self.player.weapon, "homing", True),
+            "shotgun": lambda: setattr(self.player.weapon, "spread_shot", True),
+            "bullet_heal": lambda: setattr(self.player, "bullet_heal_counter", 0),
+            "has_shield": lambda: setattr(self.player, "has_shield", True),
+            "double_damage": self._apply_double_damage,
+            "revive_chance": lambda: setattr(self.player, "revive_chance", 0.25),
+            "indestructible_bomb": lambda: setattr(self.player, "bomb_pierces_indestructible", True)
+        }
+
+        if effect_name in effect_mapping:
+            effect_mapping[effect_name]()
+
+    def _apply_double_damage(self):
+        """Efecto especial para el ítem de doble daño"""
+        self.player.damage += 5
+        self.player.enemy_damage_multiplier = 2.0
 
 
     def handle_events(self):
@@ -258,10 +288,22 @@ class Game:
                 self.player.active_effects["phase_through"] = False
             elif event.type == pygame.USEREVENT + 12:  # FREEZE_ENEMIES
                 self.frozen_enemies = False
-                print("Enemigos descongelados")
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_click = True
+                if event.button == 1:
+                    if self.state == GameState.INTERLEVEL:
+                        choice = self.interlevel_screen.get_choice(mouse_pos, mouse_click)
+                        print(f"Choice returned: {choice}")
+                        if not choice:
+                            return True
+
+                        if choice["type"] == "skip":
+                            return self._handle_skip_choice()
+                        elif choice["type"] == "stat":
+                            return self._handle_stat_choice(choice["value"])
+                        elif choice["type"] == "item":
+                            return self._handle_item_choice(choice["effect"])
 
             if event.type == pygame.KEYDOWN:
                 if self.state == GameState.GAME and event.key == pygame.K_SPACE:
@@ -275,6 +317,9 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.state = GameState.MENU
 
+
+
+
         keys = pygame.key.get_pressed()
         if self.state == GameState.GAME:
             if keys[pygame.K_UP]:
@@ -285,12 +330,6 @@ class Game:
                 self.player.shoot("left")
             elif keys[pygame.K_RIGHT]:
                 self.player.shoot("right")
-
-
-
-
-
-
 
 
         # Manejo de botones según el estado del juego
@@ -308,6 +347,11 @@ class Game:
         elif self.state in (GameState.GAME_OVER, GameState.VICTORY):
             if mouse_click:
                 self.state = GameState.MENU
+
+        """Maneja eventos en la pantalla entre niveles"""
+
+
+
 
         return True
 
@@ -334,15 +378,7 @@ class Game:
         self.player.update_weapon(current_level)
 
         for bullet in self.player.weapon.bullets[:]:
-            for enemy in current_level.enemies[:]:
-                if bullet.rect.colliderect(enemy.rect):
-                    enemy.take_damage(bullet.damage)
-                    self.player.weapon.bullets.remove(bullet)
-                    if enemy.state == "dead":
-                        current_level.enemies.remove(enemy)
-                    break
-
-
+            bullet.update(current_level)
 
         for bomb in self.player.bombs[:]:
             if bomb.update(current_level):
@@ -356,7 +392,8 @@ class Game:
                     self.player.hitbox.colliderect(enemy.rect) and
                     not self.player.invincible):
 
-                self.player.take_damage()
+                base_damage = 1
+                damage = base_damage * self.player.enemy_damage_multiplier
                 if self.player.take_damage():
                     self.player.update_invincibility()
 

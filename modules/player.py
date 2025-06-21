@@ -6,7 +6,7 @@ from modules.bomb import Bomb
 from modules.weapon import Weapon
 
 class Player:
-    def __init__(self, x, y, lives, speed, color, bomb_capacity, character_type, game, damage=0.5):
+    def __init__(self, x, y, lives, speed, color, bomb_capacity, character_type, game):
         self.rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
         self.hitbox = pygame.Rect(
             x * TILE_SIZE + 5, y * TILE_SIZE + 5,
@@ -43,20 +43,19 @@ class Player:
             "frozen_enemies": False}
 
         self.weapon = Weapon(self)
-        self.damage = damage
-        self.item_effects = {"speed_+5": False,
-                            "bullet_trace": False,
+        self.damage = 1
+        self.item_effects = {"speed_boost": False,
+                            "homing_bullets": False,
                             "shotgun": False,
                             "bullet_heal": False,
-                            "1life_shield": False,
+                            "has_shield": False,
                             "double_damage": False,
-                            "revive": False,
-                            "superbomb": False}
-        self.has_shield = False
+                            "revive_chance": False,
+                            "indestructible_bomb": True}
+        self.bullet_heal_counter = 0
+        self.base_speed = speed
         self.revive_chance = 0
-        self.bullet_hits = 0
-        self.enemy_damage_multiplier = 0
-        self.bomb_pierce_indestructible = False
+        self.enemy_damage_multiplier = 1.0
         self.game = game  # Guarda referencia
         self.was_phasing = None
         self.facing = "down"
@@ -189,7 +188,6 @@ class Player:
         elif self.stored_powerup.type == PowerupType.FREEZE_ENEMIES:
             self.game.frozen_enemies = True
             pygame.time.set_timer(pygame.USEREVENT + 12, 7000, loops=1)
-            print("Enemigos congelados")
 
         self.stored_powerup = None
 
@@ -198,7 +196,7 @@ class Player:
         self.reset_item_effects()
 
         if effect_name == "speed_boost":
-            self.speed += 5
+            self.speed = self.base_speed + 5
             self.item_effects["speed_boost"] = True
 
         elif effect_name == "homing_bullets":
@@ -209,38 +207,33 @@ class Player:
 
         elif effect_name == "bullet_heal":
             self.item_effects["bullet_heal"] = True
-            self.bullet_hits = 0
+            self.bullet_heal_counter = 0
 
-        elif effect_name == "one_shield":
-            self.has_shield = True
-            self.item_effects["one_shield"] = True
+        elif effect_name == "has_shield":
+            self.item_effects["has_shield"] = True
 
         elif effect_name == "double_damage":
             self.damage += 5
-            self.enemy_damage_multiplier = 2
+            self.enemy_damage_multiplier = 2.0
             self.item_effects["double_damage"] = True
 
         elif effect_name == "revive_chance":
-            self.revive_chance = 0.25
-            self.item_effects["revive_chance"] = True
+            self.item_effects["revive_chance"] = 0.25
 
         elif effect_name == "indestructible_bomb":
-            self.bomb_pierce_indestructible = True
             self.item_effects["indestructible_bomb"] = True
 
     def reset_item_effects(self):
                 # Restablecer todos los efectos de items
-        if "speed_boost" in self.item_effects:
-            self.speed /= 1.5
-        if "double_damage" in self.item_effects:
+        if self.item_effects["speed_boost"]:
+            self.speed = self.base_speed
+
+        if self.item_effects["double_damage"]:
             self.damage -= 5
-            self.enemy_damage_multiplier = 1
+            self.enemy_damage_multiplier = 1.0
 
-        self.item_effects = {}
-        self.has_shield = False
-        self.revive_chance = 0
-        self.bomb_pierce_indestructible = False
-
+        self.item_effects = {k: False for k in self.item_effects}
+        self.item_effects["revive_chance"] = False
 
 
 
@@ -324,18 +317,19 @@ class Player:
             self.available_bombs -= 1  # Consumir bomba
 
     def take_damage(self):
-        if self.has_shield:
-            self.has_shield = False
+        damage_received = self.damage * self.enemy_damage_multiplier
+        if self.item_effects["has_shield"]:
             self.invincible = True
             self.invincible_frames = self.invincible_duration
+            self.item_effects["has_shield"] = False
             return False
 
         if not self.invincible:
-            self.lives -= 1
+            self.lives -= damage_received
             self.invincible = True
             self.invincible_frames = self.invincible_duration
 
-            if self.lives <= 0 and random.random() < self.revive_chance:
+            if self.lives <= 0 and random.random() < self.item_effects["revive_chance"]:
                 self.lives = 1
                 return False
 
@@ -363,6 +357,7 @@ class Player:
 
     def shoot(self, direction):
         self.weapon.shoot(direction)
+        print(self.damage)
 
 
     def get_explosion_pattern(self):

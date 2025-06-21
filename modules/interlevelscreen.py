@@ -1,5 +1,6 @@
 import pygame
 import random
+import os
 from modules.utils import WHITE, BLACK, WIDTH, DEFAULT_FONT, TITLE_FONT, GREEN
 from modules.button import Button
 
@@ -7,40 +8,83 @@ from modules.button import Button
 class InterLevelScreen:
     def __init__(self, player):
         self.player = player
-        self.buttons = [
-            Button(100, 200, 200, 50, "+1 Bomba", WHITE, BLACK, font=DEFAULT_FONT),
-            Button(100, 300, 200, 50, "+1 Vida", WHITE, BLACK, font=DEFAULT_FONT),
-            Button(100, 400, 200, 50, "+1 Velocidad", WHITE, BLACK, font=DEFAULT_FONT),
-            Button(100, 500, 200, 50, "+1 Daño", WHITE, BLACK, font=DEFAULT_FONT),
-            Button(400, 350, 200, 50, "Ruleta de Items", (255, 215, 0), BLACK, font=DEFAULT_FONT),
-            Button(400, 450, 200, 50, "Omitir", (200, 200, 200), BLACK, font=DEFAULT_FONT)]
-
-        self.items = [
-            {"name": "O The Fool", "effect": "speed_boost", "desc": "Velocidad x1.5 permanente"},
-            {"name": "I The Magician", "effect": "homing_bullets", "desc": "Balas persiguen enemigos"},
-            {"name": "II The High Priestess", "effect": "shotgun", "desc": "Disparo en abanico"},
-            {"name": "VI The Lovers", "effect": "bullet_heal", "desc": "+1 vida cada 20 golpes"},
-            {"name": "VII The Chariot", "effect": "one_shield", "desc": "Escudo contra 1 golpe"},
-            {"name": "XV The Devil", "effect": "double_damage", "desc": "+5 daño (enemigos x2 daño)"},
-            {"name": "XIX The Sun", "effect": "revive_chance", "desc": "25% de revivir al morir"},
-            {"name": "XVI The Tower", "effect": "indestructible_bomb", "desc": "Bombas rompen bloques indestructibles"}]
-
-        self.item_images = {"O The Fool": pygame.image.load("assets/textures/items/the_fool.png").convert_alpha(),
-                            "I The Magician": pygame.image.load("assets/textures/items/the_magician.png").convert_alpha(),
-                            "II The High Priestess": pygame.image.load("assets/textures/items/the_high_priestess.png").convert_alpha(),
-                            "VI The Lovers": pygame.image.load("assets/textures/items/the_lovers.png").convert_alpha(),
-                            "VII The Chariot": pygame.image.load("assets/textures/items/the_chariot.png").convert_alpha(),
-                            "XV The Devil": pygame.image.load("assets/textures/items/the_chariot.png").convert_alpha(),
-                            "XIX The Sun": pygame.image.load("assets/textures/items/the_sun.png").convert_alpha(),
-                            "XVI The Tower": pygame.image.load("assets/textures/items/the_tower.png").convert_alpha()}
-
+        self.buttons = self._create_buttons()
+        self.items = self._load_items()
         self.selected_item = None
         self.showing_item = False
         self.item_confirmed = False
+        self.choice_made = False
+        self.choice = None
 
-        for item in self.item_images:
-            self.item_images[item] = pygame.transform.scale(self.item_images[item], (64, 64))
+    def _create_buttons(self):
+        """Crea y posiciona los botones correctamente"""
+        return [
+            Button(100, 200, 200, 50, "+2 Bomba", WHITE, BLACK, font=DEFAULT_FONT),
+            Button(100, 300, 200, 50, "+2 Vida", WHITE, BLACK, font=DEFAULT_FONT),
+            Button(100, 400, 200, 50, "+2 Velocidad", WHITE, BLACK, font=DEFAULT_FONT),
+            Button(100, 500, 200, 50, "+2 Daño", WHITE, BLACK, font=DEFAULT_FONT),
+            Button(400, 350, 200, 50, "Ruleta de Items", (255, 215, 0), BLACK, font=DEFAULT_FONT),
+            Button(400, 450, 200, 50, "Omitir", (200, 200, 200), BLACK, font=DEFAULT_FONT)
+        ]
 
+    def _load_items(self):
+        """Carga los items con sus imágenes"""
+        items = [
+            {"name": "O The Fool", "effect": "speed_boost", "desc": "¡Obtienes +5 de velocidad permanente!",
+             "image": "the_fool.png"},
+            {"name": "I The Magician", "effect": "homing_bullets", "desc": "Tus balas persiguen a los enemigos",
+             "image": "the_magician.png"},
+            {"name": "II The High Priestess", "effect": "shotgun", "desc": "Tu arma ahora es una escopeta",
+             "image": "the_high_priestess.png"},
+            {"name": "VI The Lovers", "effect": "bullet_heal", "desc": "Te curas cada 20 disparos",
+             "image": "the_lovers.png"},
+            {"name": "VII The Chariot", "effect": "has_shield", "desc": "Anulas una vez por nivel 1 punto de daño",
+             "image": "the_chariot.png"},
+            {"name": "XV The Devil", "effect": "double_damage", "desc": "Obtienes +5 de daño permanente, pero ahora los enemigos hacen el doble de daño",
+             "image": "the_devil.png"},
+            {"name": "XIX The Sun", "effect": "revive_chance", "desc": "Obtienes un 25% de probabilidad de revivir al comienzo de cada nivel",
+             "image": "the_sun.png"},
+            {"name": "XVI The Tower", "effect": "indestructible_bomb",
+             "desc": "Tus bombas ahora rompen bloques indestructibles", "image": "the_tower.png"}]
+
+        for item in items:
+            try:
+                img_path = os.path.join("assets", "textures", "items", item["image"])
+                item["image_surface"] = pygame.image.load(img_path).convert_alpha()
+                item["image_surface"] = pygame.transform.scale(item["image_surface"], (128, 128))
+            except:
+                item["image_surface"] = self._create_fallback_surface(item["name"])
+
+        return items
+
+    def get_choice(self, mouse_pos, mouse_click):
+        """Devuelve la elección del jugador o None si no hay selección"""
+        if not mouse_click:
+            return None
+
+        if self.showing_item:
+            # Botón de confirmación de ítem
+            confirm_rect = pygame.Rect(WIDTH // 2 - 100, 450, 200, 50)
+            if confirm_rect.collidepoint(mouse_pos):
+                return {"type": "item", "effect": self.selected_item["effect"]}
+            return None
+
+        # Verificar botones de mejora
+        for i, button in enumerate(self.buttons[:4]):  # Solo los 4 primeros botones
+            if button.rect.collidepoint(mouse_pos):
+                return {"type": "stat", "value": i}  # 0=bomba, 1=vida, etc.
+
+        # Botón de ruleta
+        if self.buttons[4].rect.collidepoint(mouse_pos):  # Ruleta
+            self.selected_item = random.choice(self.items)
+            self.showing_item = True
+            return None
+
+        # Botón omitir
+        if self.buttons[5].rect.collidepoint(mouse_pos):  # Omitir
+            return {"type": "skip"}
+
+        return None
 
     def draw(self, surface):
         surface.fill(BLACK)
@@ -51,33 +95,25 @@ class InterLevelScreen:
             for btn in self.buttons:
                 btn.draw(surface)
         else:
-            # Mostrar el item seleccionado
-            item = self.selected_item
-            item_name = TITLE_FONT.render(item["name"], True, (255, 215, 0))
-            item_desc = DEFAULT_FONT.render(item["desc"], True, WHITE)
+            self._draw_item_selection(surface)
 
-            surface.blit(item_name, (WIDTH // 2 - item_name.get_width() // 2, 200))
-            surface.blit(item_desc, (WIDTH // 2 - item_desc.get_width() // 2, 250))
+    def _draw_item_selection(self, surface):
+        """Dibuja la selección de ítem con confirmación"""
+        item = self.selected_item
+        surface.blit(item["image_surface"], (WIDTH // 2 - 64, 150))
 
-            confirm_btn = Button(WIDTH // 2 - 100, 350, 200, 50, "Confirmar", GREEN, BLACK, font=DEFAULT_FONT)
-            confirm_btn.draw(surface)
+        text_name = TITLE_FONT.render(item["name"], True, (255, 215, 0))
+        text_desc = DEFAULT_FONT.render(item["desc"], True, WHITE)
+        surface.blit(text_name, (WIDTH // 2 - text_name.get_width() // 2, 300))
+        surface.blit(text_desc, (WIDTH // 2 - text_desc.get_width() // 2, 350))
 
-            if confirm_btn.is_clicked(pygame.mouse.get_pos(), pygame.mouse.get_pressed()[0]):
-                self.item_confirmed = True
+        confirm_btn = Button(WIDTH // 2 - 100, 450, 200, 50, "Confirmar", GREEN, BLACK, font=DEFAULT_FONT)
+        confirm_btn.draw(surface)
 
-    def get_choice(self, mouse_pos, click):
-        if self.showing_item and not self.item_confirmed:
-            return None
-
-        for i, btn in enumerate(self.buttons):
-            if btn.is_clicked(mouse_pos, click):
-                if i == 4:
-                    self.selected_item =random.choice(self.items)
-                    self.showing_item = True
-                    return None
-                elif i == 5:
-                    return "omitir"
-                else:
-                    return i
-        return None
-
+    def _create_fallback_surface(self, name):
+        """Crea un ícono de reserva"""
+        surface = pygame.Surface((128, 128), pygame.SRCALPHA)
+        pygame.draw.rect(surface, (70, 70, 70, 200), (0, 0, 128, 128), border_radius=10)
+        text = DEFAULT_FONT.render(name.split()[0], True, WHITE)
+        surface.blit(text, (64 - text.get_width() // 2, 64 - text.get_height() // 2))
+        return surface
