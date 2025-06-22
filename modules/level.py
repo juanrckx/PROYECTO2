@@ -1,5 +1,8 @@
+import pygame
+
+from modules.boss import Boss
 from modules.powerups import Powerup
-from modules.utils import Difficulty, TILE_SIZE
+from modules.utils import Difficulty, TILE_SIZE, PowerupType
 import random
 from modules.enemy import Enemy
 from modules.block import Block
@@ -18,11 +21,21 @@ class Level:
         self.door_block_position = None
         self.powerups = []
         self.generate_level()
+        self.powerup_spawn_count = {"EXTRA_LIFE": 0,
+            "EXTRA_BOMB": 0,
+            "EXTRA_VELOCITY": 0,
+            "EXTRA_DAMAGE": 0,
+            "EXPLOSION_RANGE": 0,}
+        self.last_powerup_timer = 0
 
     def generate_level(self):
-        self.generate_map()
-        self.generate_door()
-        self.generate_enemies()
+        if self.difficulty == Difficulty.FINAL_BOSS:
+            self.generate_boss_arena()
+        else:
+            self.generate_map()
+            self.generate_door()
+            self.generate_enemies()
+
 
     def generate_map(self):
         width, height = 20, 15
@@ -55,6 +68,69 @@ class Level:
         self.ensure_door_access()
         self.create_path_to_door(self.door_block_position, self.door_block_position)
 
+    def generate_boss_arena(self):
+        width, height = 20, 15
+
+
+        self.door = None
+        self.door_block_position = None
+        self.key = None
+        self.enemies = []
+        self.powerups = []
+
+        for x in range(width):
+            for y in range(height):
+                if x in (0, width - 1) or y in (0, height - 1):
+                    self.map.append(Block(x, y, destructible=False))
+
+        safe_zone = [(1,1), (1,2), (2,1), (2,2), (1,3), (3,1)]
+
+        for x in range(1, width - 1):
+            for y in range(1, height - 1):
+                if (x, y) in safe_zone:
+                    continue
+
+                distance_to_center = ((x - width / 2) ** 2 + (y - height / 2) ** 2) ** 0.5
+
+                if distance_to_center < 4:
+                    if random.random() < 0.2:
+                        self.map.append(Block(x, y, destructible=random.choice([True, False])))
+                elif distance_to_center < 8:
+                    if random.random() < 0.5:
+                        self.map.append(Block(x, y, destructible=random.choice([True, False])))
+                else:
+                    if random.random() < 0.7:
+                        self.map.append(Block(x, y, destructible=random.choice([True, False])))
+
+        for dx, dy in [(1, 1), (1, height - 2), (width - 2, 1), (width - 2, height - 2)]:
+            for i in range(3):
+                x = dx + (0 if dx == 1 else -1) * i
+                y = dy + (0 if dy == 1 else -1) * i
+                self.map = [b for b in self.map if not (b.rect.x == x * TILE_SIZE and b.rect.y == y * TILE_SIZE)]
+
+
+        powerup_positions = [(3, 3), (width - 4, 3), (width // 2, width // 2), (3, height - 4), (width - 4, height - 4)]
+
+        for x, y in powerup_positions:
+            if random.random() < 0.8:
+                self.powerups.append(Powerup(x * TILE_SIZE, y * TILE_SIZE))
+
+        boss_x, boss_y = (width // 2, height // 2)
+        self.spawn_boos(boss_x, boss_y)
+
+    def spawn_boos(self, boss_x, boss_y):
+        self.map = [b for b in self.map if not (b.rect.x == boss_x * TILE_SIZE and b.rect.y == boss_y * TILE_SIZE)]
+
+        boss = Boss(boss_x * TILE_SIZE, boss_y * TILE_SIZE)
+        self.enemies.append(boss)
+
+        for dx in [-1, 0, 1]:
+            for dy in [-1, 0, 1]:
+                if dx == 0 and dy == 0:
+                    continue
+                clear_x, clear_y = boss_x + dx, boss_y + dy
+                if 0 <= clear_x < 20 and 0 <= clear_y < 15:
+                    self.map = [b for b in self.map if not (b.rect.x == clear_x * TILE_SIZE and b.rect.y == clear_y * TILE_SIZE)]
 
     def ensure_door_access(self):
         """Garantiza que haya al menos un camino a la puerta"""
@@ -231,29 +307,76 @@ class Level:
             # Actualizar bombas
     def check_bomb_collisions(self, bomb, player):
         if not bomb.exploded:
-            bomb.explode(player, self)  # Asegurarnos de pasar player y self
+            bomb.explode(self)
+        player_hit = False
+        if bomb.exploded:
+            for block in self.map[:]:
+                if block.destructible and not block.destroyed:
+                    for exp_rect in bomb.explosion_rects:
+                        if block.rect.colliderect(exp_rect):
+                            block.destroyed = True
+                            self.map.remove(block)
+                            if random.random() <= 0.7 and len(self.powerups) < 5:
+                                self.powerups.append(Powerup(block.rect.x, block.rect.y))
 
-        for block in self.map[:]:  # Usamos copia para modificar durante iteración
+                            if (getattr(block, 'has_key') and
+                                    block.has_key and not block.revealed_key):
+                                self.key.rect.x = block.rect.x
+                                self.key.rect.y = block.rect.y
+                                self.key.collected = False
+                                self.key.revealed = True
+                            if not (hasattr(block, 'has_key') and block.has_key):
+                                if block in self.map:
+                                    self.map.remove(block)
+
+                            break
+
             for exp_rect in bomb.explosion_rects:
-                if block.rect.colliderect(exp_rect):
-                    # BLOQUES INDESTRUCTIBLES (excepto bordes)
-                    if (player.item_effects.get("indestructible_bomb")
-                            and not block.destructible
-                            and not self.is_border_block(block)):
-                        block.destroyed = True
-                        self.map.remove(block)
-
-                    # BLOQUES DESTRUCTIBLES (comportamiento normal)
-                    elif block.destructible:
-                        block.destroyed = True
-                        self.map.remove(block)
-
-                        # Generar powerups y manejar llaves
-                        if random.random() <= 0.7 and len(self.powerups) < 5 and not block.has_key:
-                            self.powerups.append(Powerup(block.rect.x, block.rect.y))
-
-                        if getattr(block, 'has_key', False) and not getattr(block, 'revealed_key', False):
-                            self.key.revealed = True
-                            self.key.rect.x = block.rect.x
-                            self.key.rect.y = block.rect.y
+                if not player_hit and player.hitbox.colliderect(
+                        exp_rect) and not player.invincible and not player.active_effects.get("bomb_immune", False):
+                    player_hit = True
+                    player.take_damage(amount=1)
                     break
+
+            for enemy in self.enemies[:]:  # Usamos copia para poder modificar la lista
+                if enemy.state != "dead":
+                    for exp_rect in bomb.explosion_rects:
+                        if enemy.rect.colliderect(exp_rect):
+                            enemy.enemy_take_damage(amount=2)
+                            if enemy.state == "dead":
+                                self.enemies.remove(enemy)
+                            break
+
+
+    def generate_boss_powerup(self):
+        if self.difficulty != Difficulty.FINAL_BOSS:
+            return
+        allowed_powerups = []  # Máx. 1 aparición
+
+        if self.powerup_spawn_count.get("EXTRA_VELOCITY", 0) >= 3:
+            allowed_powerups.append(PowerupType.EXTRA_VELOCITY)
+        if self.powerup_spawn_count.get("EXTRA_DAMAGE", 0) >= 3:
+            allowed_powerups.append(PowerupType.EXTRA_DAMAGE)
+        if self.powerup_spawn_count.get("EXPLOSION_RANGE", 0) >= 1:
+            allowed_powerups.append(PowerupType.EXPLOSION_RANGE)
+
+        allowed_powerups.extend([PowerupType.EXTRA_LIFE, PowerupType.EXTRA_BOMB])
+
+        if not allowed_powerups:
+            return
+
+        chosen_type = random.choice(allowed_powerups)
+        x, y = self.find_valid_position()
+
+        powerup = Powerup(x * TILE_SIZE, y * TILE_SIZE)
+        powerup.type = chosen_type
+        self.powerups.append(powerup)
+
+        self.powerup_spawn_count[chosen_type.name] += 1
+
+
+    def update_boss_powerups(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_powerup_timer > 15000:
+            self.generate_boss_powerup()
+            self.last_powerup_timer = current_time

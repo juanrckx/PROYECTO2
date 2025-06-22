@@ -1,6 +1,8 @@
 import math
 
 import pygame
+
+from modules.boss import Boss
 from modules.utils import RED, WIDTH, HEIGHT
 
 class Weapon:
@@ -131,7 +133,11 @@ class Bullet:
 
         for enemy in current_level.enemies[:]:
             if enemy != "dead" and self.rect.colliderect(enemy.rect):
-                enemy.enemy_take_damage(self.damage)
+                if isinstance(enemy, Boss):
+                    enemy.boss_take_damage(self.damage)
+                else:
+                    enemy.enemy_take_damage(self.damage)
+
 
                 if self.owner.item_effects["bullet_heal"]:
                     self.owner.bullet_heal_counter += 1

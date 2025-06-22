@@ -1,4 +1,6 @@
 import pygame
+
+from modules.powerups import Powerup
 from modules.utils import TILE_SIZE
 import random
 
@@ -10,6 +12,7 @@ class Enemy:
         self.direction = pygame.Vector2(0, 0)
         self.change_direction_timer = 0
         self.state = "moving"  # moving, tired, dead
+        self.powerups = []
         self.game = game
 
 
@@ -26,6 +29,7 @@ class Enemy:
             self.speed = 1.5  # Reducida velocidad
             self.health = 5
             self.color = (139, 69, 19)
+
 
     def update(self, game_map):
         if hasattr(self, 'game') and getattr(self.game, 'frozen_enemies', False):
@@ -65,6 +69,8 @@ class Enemy:
 
     def enemy_take_damage(self, amount):
         self.health -= amount
+        if random.random() <= 0.7 and len(self.powerups) < 5:
+            self.powerups.append(Powerup(self.rect.x, self.rect.y))
         print(self.health)
         if self.health <= 0:
             self.state = "dead"

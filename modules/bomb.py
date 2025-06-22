@@ -2,14 +2,16 @@ import pygame
 from modules.utils import  TILE_SIZE, FPS
 
 class Bomb:
-    def __init__(self, x, y, player, timer=3, bomb_range=1):
+    def __init__(self, x, y, player, is_super, explosion_range, timer=3):
         self.rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
         self.timer = timer * FPS  # Convertir segundos a frames
-        self.range = bomb_range
+        self.explosion_range = explosion_range
         self.exploded = False
         self.explosion_timer = 30
         self.explosion_rects = []
         self.player = player
+        self.is_super = is_super
+
 
 
     def update(self, current_level = None):
@@ -30,11 +32,11 @@ class Bomb:
 
         # Definir patrones de explosión
         base_pattern = [(1, 0), (-1, 0), (0, 1), (0, -1)]
-        if player.get_explosion_pattern() == "diamond":
+        if hasattr(player, 'get_explosion_pattern') and player.get_explosion_pattern() == "diamond":
             base_pattern.extend([(1, 1), (-1, 1), (1, -1), (-1, -1), (2, 0), (0, 2), (-2, 0), (0, -2)])
 
         for dx, dy in base_pattern:
-            for i in range(1, self.range + 1):
+            for i in range(1, self.explosion_range + 1):
                 new_rect = pygame.Rect(
                     self.rect.x + dx * i * TILE_SIZE,
                     self.rect.y + dy * i * TILE_SIZE,
@@ -42,7 +44,7 @@ class Bomb:
                 )
 
                 # Solo verificar colisión si NO tenemos indestructible_bomb
-                if not player.item_effects.get("indestructible_bomb"):
+                if hasattr(player, 'item_effects') and not player.item_effects.get("indestructible_bomb"):
                     if any(not block.destructible and block.rect.colliderect(new_rect)
                            for block in current_level.map):
                         break

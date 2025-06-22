@@ -31,13 +31,13 @@ class Powerup:
         powerup_types = list(PowerupType)
         weights = [
             0.3,  # EXTRA_LIFE
-            0.5,  # EXTRA_BOMB
+            0.7,  # EXTRA_BOMB
             0.2,  # EXTRA_VELOCITY
             0.2,  # EXTRA_DAMAGE
-            0.15,  # EXPLOSION_RANGE
+            0.09,  # EXPLOSION_RANGE
             0.10,  # BOMB_IMMUNITY
-            0.10,  # PHASE_TROUGH
-            0.10  # FREEZE_ENEMIES
+            0.05,  # PHASE_TROUGH
+            0.05  # FREEZE_ENEMIES
         ]
         self.type = random.choices(powerup_types, weights=weights, k=1)[0]
 

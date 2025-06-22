@@ -51,7 +51,7 @@ class Player:
                             "has_shield": False,
                             "double_damage": False,
                             "revive_chance": False,
-                            "indestructible_bomb": True}
+                            "indestructible_bomb": False}
         self.bullet_heal_counter = 0
         self.base_speed = speed
         self.revive_chance = 0
@@ -313,28 +313,37 @@ class Player:
         if self.available_bombs > 0:
             grid_x = self.rect.centerx // TILE_SIZE
             grid_y = self.rect.centery // TILE_SIZE
-            self.bombs.append(Bomb(grid_x * TILE_SIZE, grid_y * TILE_SIZE, self))
+            self.bombs.append(Bomb(grid_x * TILE_SIZE, grid_y * TILE_SIZE, self, False, self.base_explosion_range, 3))
             self.available_bombs -= 1  # Consumir bomba
 
-    def take_damage(self):
-        damage_received = self.damage * self.enemy_damage_multiplier
-        if self.item_effects["has_shield"]:
-            self.invincible = True
-            self.invincible_frames = self.invincible_duration
-            self.item_effects["has_shield"] = False
+    def take_damage(self, amount):
+        # Verificar protección contra daño
+        if self.invincible:
             return False
 
-        if not self.invincible:
-            self.lives -= damage_received
+        if self.item_effects.get("has_shield", False):
+            self.item_effects["has_shield"] = False
             self.invincible = True
             self.invincible_frames = self.invincible_duration
+            return False
 
-            if self.lives <= 0 and random.random() < self.item_effects["revive_chance"]:
+        if self.active_effects.get("bomb_immune", False):
+            return False
+
+        # Aplicar daño
+        self.lives -= amount
+        self.invincible = True
+        self.invincible_frames = self.invincible_duration
+
+        # Manejar muerte
+        if self.lives <= 0:
+            revive_chance = self.item_effects.get("revive_chance", 0)
+            if random.random() < revive_chance:
                 self.lives = 1
                 return False
-
-            return True
+            return True  # Jugador murió
         return False
+
 
 
     def update_invincibility(self):

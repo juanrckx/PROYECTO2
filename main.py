@@ -1,6 +1,8 @@
 import sys
 import pygame
 
+from modules import boss
+from modules.boss import Boss
 from modules.interlevelscreen import InterLevelScreen
 from modules.powerups import Powerup
 from modules.button import Button
@@ -29,10 +31,6 @@ Ambientacion
 #class Traps:
 
 
-#EN PROCESO
-
-
-
 Pantalla de configuraciones
 Pantalla con los mejores puntajes
 Pantalla de información
@@ -43,6 +41,7 @@ Animacion de inicio del juego
 Animacion explosiones
 Armas
 Musica
+
 '''
 # Inicialización de Pygame
 pygame.init()
@@ -125,15 +124,15 @@ class Game:
 
     def start_game(self, character_type):
         self.levels = [
-            Level(1, Difficulty.EASY, self),
-            Level(2, Difficulty.MEDIUM, self),
-            Level(3, Difficulty.HARD, self),
-            Level(4, Difficulty.FINAL_BOSS, self)]
-        self.current_level_index = 0
+            Level(0, Difficulty.EASY, self),
+            Level(1, Difficulty.MEDIUM, self),
+            Level(2, Difficulty.HARD, self),
+            Level(3, Difficulty.FINAL_BOSS, self)]
+        self.current_level_index = 3
 
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(1, 1, 3, 3, BLUE, 51, 0,  self )
+            self.player = Player(1, 1, 99, 15, BLUE, 51, 0,  self )
         elif character_type == 1:  # Tanky
             self.player = Player(1, 1, 5, 2, GREEN, 3, 1,  self)
         elif character_type == 2:  # Pyro
@@ -165,21 +164,22 @@ class Game:
             )
         ]
 
-    def next_level(self):
+    def between_levels(self):
         """Transición al siguiente nivel con reinicio de estados"""
         # 1. Cambiar estado y crear pantalla de selección
+        if self.state == GameState.INTERLEVEL:
+            return
         self.state = GameState.INTERLEVEL
         self.interlevel_screen = InterLevelScreen(self.player)
 
-        # 2. Verificar si es el último nivel
-        if self.current_level_index >= len(self.levels) - 1:
-            self.state = GameState.VICTORY
-            return False
 
-        # 3. Preparar el siguiente nivel
-        self.current_level_index += 1
+    def prepare_next_level(self):
+        # 2. Verificar si es el último nivel
         current_level = self.levels[self.current_level_index]
-        current_level.__init__(current_level.number, current_level.difficulty, self)
+        current_level.__init__(
+            current_level.number,
+            current_level.difficulty,
+            self)
 
         # 4. Resetear propiedades del jugador
         self._reset_player_for_new_level()
@@ -187,6 +187,9 @@ class Game:
         # 5. Limpiar efectos temporales
         self._clear_temporary_effects()
 
+        self.ensure_starting_position()
+
+        print(f"Level {self.current_level_index + 1} loaded, {len(self.levels)}")
         return True
 
     def _reset_player_for_new_level(self):
@@ -207,13 +210,14 @@ class Game:
             "phase_through": False
         }
         self.frozen_enemies = False
+        self.player.explosion_range = self.player.base_explosion_range
         self.player.weapon.damage = self.player.weapon.base_damage
         self.player.weapon.speed = 10
 
 
 
     def _handle_skip_choice(self):
-        if not self.next_level():
+        if not self.prepare_next_level():
             self.state = GameState.VICTORY
         else:
             self.state = GameState.GAME
@@ -221,7 +225,7 @@ class Game:
 
     def _handle_stat_choice(self, choice):
         self.apply_choice(choice)
-        if not self.next_level():
+        if not self.prepare_next_level():
             self.state = GameState.VICTORY
         else:
             self.state = GameState.GAME
@@ -229,7 +233,7 @@ class Game:
 
     def _handle_item_choice(self, effect_name):
         self.player.apply_item_effect(effect_name)
-        if not self.next_level():
+        if not self.prepare_next_level():
             self.state = GameState.VICTORY
         else:
             self.state = GameState.GAME
@@ -297,13 +301,22 @@ class Game:
                         print(f"Choice returned: {choice}")
                         if not choice:
                             return True
-
                         if choice["type"] == "skip":
+
+                            self.current_level_index += 1
                             return self._handle_skip_choice()
                         elif choice["type"] == "stat":
+
+                            self.current_level_index += 1
                             return self._handle_stat_choice(choice["value"])
                         elif choice["type"] == "item":
+
+                            self.current_level_index += 1
                             return self._handle_item_choice(choice["effect"])
+
+
+                        self.prepare_next_level()
+                        self.state = GameState.GAME
 
             if event.type == pygame.KEYDOWN:
                 if self.state == GameState.GAME and event.key == pygame.K_SPACE:
@@ -359,9 +372,21 @@ class Game:
         if self.state != GameState.GAME or not self.player:
             return
 
+
+
         current_level = self.levels[self.current_level_index]
         self.player.update_phase_effect(current_level)
         keys = pygame.key.get_pressed()
+
+        if current_level.difficulty == Difficulty.FINAL_BOSS:
+            if len(current_level.enemies) == 0:  # Asumiendo que el jefe es el único enemigo
+                self.state = GameState.VICTORY
+
+        if current_level.difficulty != Difficulty.FINAL_BOSS:
+            if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
+                self.between_levels()
+                current_level.update_boss_powerups()
+
 
         # Movimiento del jugador
         dx, dy = 0, 0
@@ -372,8 +397,15 @@ class Game:
 
         self.player.move(dx, dy, current_level.map, current_level)
 
-        for enemy in current_level.enemies:
-            enemy.update(current_level.map)
+        for enemy in current_level.enemies[:]:
+            if isinstance(enemy, Boss):  # Comportamiento especial para el jefe
+                enemy.update(
+                    player=self.player,
+                    current_time=pygame.time.get_ticks(),
+                    arena_blocks=current_level.map
+                )
+            else:  # Comportamiento normal para enemigos
+                enemy.update(current_level.map)
 
         self.player.update_weapon(current_level)
 
@@ -385,36 +417,41 @@ class Game:
                 current_level.check_bomb_collisions(bomb, self.player)
                 self.player.bombs.remove(bomb)
 
-
-
         for enemy in current_level.enemies:
             if (enemy.state != "dead" and
                     self.player.hitbox.colliderect(enemy.rect) and
                     not self.player.invincible):
 
                 base_damage = 1
-                damage = base_damage * self.player.enemy_damage_multiplier
-                if self.player.take_damage():
+                damage = int(base_damage * self.player.enemy_damage_multiplier)
+                self.player.take_damage(damage)
+                if self.player.take_damage(damage):
                     self.player.update_invincibility()
 
             if self.player.lives <= 0:
                 self.state = GameState.GAME_OVER
                 return
+        if current_level.difficulty == Difficulty.FINAL_BOSS:
+            for enemy in current_level.enemies:
+                if isinstance(enemy, Boss):
+                    for bomb in enemy.boss_bombs[:]:
+                        if bomb.update(current_level):
+                            current_level.check_bomb_collisions(bomb, self.player)
+                            enemy.boss_bombs.remove(bomb)
 
-        current_level = self.levels[self.current_level_index]
+        if current_level.difficulty != Difficulty.FINAL_BOSS:
+            if (hasattr(current_level, 'key') and
+                    current_level.key.revealed and
+                    not current_level.key.collected and
+                    self.player.hitbox.colliderect(current_level.key.rect)):
 
-        if (hasattr(current_level, 'key') and
-                current_level.key.revealed and
-                not current_level.key.collected and
-                self.player.hitbox.colliderect(current_level.key.rect)):
+                    current_level.key.collected = True
+                    self.player.key_collected = True
+                    current_level.open_door()
 
-                current_level.key.collected = True
-                self.player.key_collected = True
-                current_level.open_door()
-
-        if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
-            self.next_level()
-            self.score += 500
+            if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
+                self.between_levels()
+                self.score += 500
 
 
 
@@ -475,9 +512,10 @@ class Game:
                 block.draw(window)
 
         # Dibujar puerta y llave
-        current_level.door.draw(window)
-        if current_level.key and not current_level.key.collected and current_level.key.revealed:
-            current_level.key.draw(window)
+        if current_level.difficulty != Difficulty.FINAL_BOSS:
+            current_level.door.draw(window)
+            if current_level.key and not current_level.key.collected and current_level.key.revealed:
+                current_level.key.draw(window)
 
         # Dibujar enemigos
         for enemy in current_level.enemies:
