@@ -393,6 +393,24 @@ class Boss:
                 current_level.check_bomb_collisions(bomb, player)
                 self.boss_bombs.remove(bomb)
 
+    def debug_draw(self, surface, camera=None):
+        """Dibuja información de debug para el jefe"""
+        if camera:
+            render_pos = self.rect.move(camera.camera.topleft)
+        else:
+            render_pos = self.rect
+
+        # Dibujar área de colisión
+        pygame.draw.rect(surface, (255, 0, 0, 128), render_pos, 1)
+
+        # Dibujar radio de visión/ataque
+        pygame.draw.circle(surface, (255, 165, 0, 50), render_pos.center, 200, 1)
+
+        # Dibujar estado actual
+        state_text = f"Estado: {self.state}"
+        font = pygame.font.SysFont(None, 20)
+        text_surface = font.render(state_text, True, (255, 255, 255))
+        surface.blit(text_surface, (render_pos.x, render_pos.y - 20))
 
     def draw(self, surface):
         """Dibuja al jefe con indicadores de estado"""

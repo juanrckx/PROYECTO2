@@ -49,7 +49,7 @@ class Level:
         indestructible_prob = {
             Difficulty.EASY: 0.3,
             Difficulty.MEDIUM: 0.4,
-            Difficulty.HARD: 0.5
+            Difficulty.HARD: 0.4
         }.get(self.difficulty, 0.4)
 
         safe_zone = [(1,1, (1,2,),(2,1), (2,2),(1,3), (3,1))]
@@ -112,69 +112,85 @@ class Level:
         self.entrance_block.destroyed = True
         self.map.append(self.entrance_block)
 
-    def _debug_draw_blocks(self):
-        """Dibuja los bloques para verificación"""
-        print("\n=== DEBUG DE BLOQUES ===")
-        print(f"Total bloques: {len(self.map)}")
+    def debug_draw_map(self, surface, camera=None):
+        """Dibuja un mapa de debug con colores para diferentes elementos"""
+        # Colores para debug
+        COLORS = {
+            'wall': (100, 100, 100),  # Gris - Bloques indestructibles
+            'spawn_room': (50, 50, 150),  # Azul oscuro - Sala de spawn
+            'hallway': (70, 70, 200),  # Azul - Pasillo
+            'arena': (150, 50, 50),  # Rojo oscuro - Arena
+            'entrance': (0, 255, 0),  # Verde - Entrada (verde si está abierta)
+            'player_spawn': (0, 255, 255),  # Cian - Posición de spawn del jugador
+            'boss_spawn': (255, 0, 255)  # Magenta - Posición del jefe
+        }
 
-        # Agrupar por coordenadas Y
-        y_coords = sorted({b.rect.y for b in self.map})
-
-        for y in y_coords:
-            line = ""
-            x_coords = sorted(b.rect.x for b in self.map if b.rect.y == y)
-
-            for x in range(min(x_coords), max(x_coords) + TILE_SIZE, TILE_SIZE):
-                block = next((b for b in self.map if b.rect.x == x and b.rect.y == y), None)
-                line += "▓" if block else " "
-
-            print(f"Y={y}: {line}")
-
-    def _debug_visual_map(self):
-        """Debug visual mejorado"""
-        print("\n=== MAPA VISUAL ===")
-        grid = [[' ' for _ in range(25)] for _ in range(15)]
-
-        # Mapear bloques
+        # Dibujar todos los bloques
         for block in self.map:
-            x = block.rect.x // TILE_SIZE
-            y = block.rect.y // TILE_SIZE
-            if -5 <= x < 20 and 0 <= y < 15:  # Rango ampliado para spawn
-                char = '▓' if not block.destructible else '░'
-                grid[y][x + 5] = char  # Ajuste para coordenadas negativas
+            if camera:
+                rect = block.rect.move(camera.camera.topleft)
+            else:
+                rect = block.rect
 
-        # Mapear jugador
-        px, py = self.player_spawn_x // TILE_SIZE, self.player_spawn_y // TILE_SIZE
-        if -5 <= px < 20 and 0 <= py < 15:
-            grid[py][px + 5] = 'P'
+            # Determinar el color según la ubicación del bloque
+            if not block.destructible:
+                # Identificar en qué área está el bloque
+                if hasattr(self, 'player_spawn_x') and hasattr(self, 'player_spawn_y'):
+                    spawn_room_x = self.player_spawn_x // TILE_SIZE - 1
+                    spawn_room_y = self.player_spawn_y // TILE_SIZE - 1
 
-        # Mapear boss
+                    # Sala de spawn (5x5)
+                    if (spawn_room_x <= block.rect.x // TILE_SIZE < spawn_room_x + 5 and
+                            spawn_room_y <= block.rect.y // TILE_SIZE < spawn_room_y + 5):
+                        color = COLORS['spawn_room']
+
+                    # Pasillo (3 bloques de largo)
+                    elif (spawn_room_x + 5 <= block.rect.x // TILE_SIZE < spawn_room_x + 8 and
+                          block.rect.y // TILE_SIZE == spawn_room_y + 2):
+                        color = COLORS['hallway']
+
+                    # Arena
+                    else:
+                        color = COLORS['arena']
+                else:
+                    color = COLORS['wall']
+
+                pygame.draw.rect(surface, color, rect)
+
+        # Dibujar entrada
+        if hasattr(self, 'entrance_block'):
+            if camera:
+                entrance_rect = self.entrance_block.rect.move(camera.camera.topleft)
+            else:
+                entrance_rect = self.entrance_block.rect
+
+            entrance_color = COLORS['entrance'] if self.entrance_block.destroyed else (255, 0, 0)
+            pygame.draw.rect(surface, entrance_color, entrance_rect, 2)  # Borde grueso
+
+        # Dibujar posición de spawn del jugador
+        if hasattr(self, 'player_spawn_x') and hasattr(self, 'player_spawn_y'):
+            player_spawn_rect = pygame.Rect(
+                self.player_spawn_x - TILE_SIZE // 2,
+                self.player_spawn_y - TILE_SIZE // 2,
+                TILE_SIZE, TILE_SIZE
+            )
+            if camera:
+                player_spawn_rect = player_spawn_rect.move(camera.camera.topleft)
+
+            pygame.draw.rect(surface, COLORS['player_spawn'], player_spawn_rect, 2)
+
+        # Dibujar posición del jefe
         for enemy in self.enemies:
             if isinstance(enemy, Boss):
-                bx, by = enemy.rect.centerx // TILE_SIZE, enemy.rect.centery // TILE_SIZE
-                if 0 <= bx < 20 and 0 <= by < 15:
-                    grid[by][bx] = 'B'
+                boss_rect = pygame.Rect(
+                    enemy.rect.x - enemy.rect.width // 2,
+                    enemy.rect.y - enemy.rect.height // 2,
+                    enemy.rect.width, enemy.rect.height
+                )
+                if camera:
+                    boss_rect = boss_rect.move(camera.camera.topleft)
 
-        # Imprimir grid
-        for row in grid:
-            print(''.join(row))
-        print("Coordenadas (X: -5 a 19, Y: 0 a 14)")
-
-    def _debug_verify_positions(self):
-        """Verificación EXTRA de posiciones"""
-        print("\n=== VERIFICACIÓN DE POSICIONES ===")
-        print(f"Spawn jugador: ({self.player_spawn_x}, {self.player_spawn_y})")
-        print(f"Total bloques: {len(self.map)}")
-        print(f"Total enemigos: {len(self.enemies)}")
-
-        # Verificar que el boss está en la posición correcta
-        for enemy in self.enemies:
-            if isinstance(enemy, Boss):
-                print(f"Boss en: ({enemy.rect.x}, {enemy.rect.y})")
-
-        # Verificar bordes
-        border_count = sum(1 for b in self.map if not b.destructible)
-        print(f"Bloques de borde: {border_count}/{(20 + 15) * 2} esperados")
+                pygame.draw.rect(surface, COLORS['boss_spawn'], boss_rect, 2)
 
 
 
@@ -320,7 +336,7 @@ class Level:
         enemy_count = {
             Difficulty.EASY: 3,
             Difficulty.MEDIUM: 5,
-            Difficulty.HARD: 7
+            Difficulty.HARD: 10
         }.get(self.difficulty, 3)
 
         self.enemies = []

@@ -12,7 +12,7 @@ from utils import GameState, Difficulty, GRAY, GREEN, RED, BLUE, BLACK, HEIGHT, 
     ScrollingBackground, Camera, MAP_WIDTH, MAP_HEIGHT
 
 '''
-
+#TODO
 Boss Fight      
 #Bomb Lord:
 #Coloca 5 bombas en posiciones aleatorias
@@ -22,6 +22,7 @@ Boss Fight
 #Embestida, luego de esta queda cansado
 class Boss_Fight:
 
+#TODO
 Ambientacion
 #Oscuridad
 #Trampas de hielo
@@ -31,7 +32,7 @@ Ambientacion
 #Trampa que invierte el movimiento del jugador
 #class Traps:
 
-
+#TODO
 Pantalla de configuraciones
 Pantalla con los mejores puntajes
 Pantalla de información
@@ -42,6 +43,16 @@ Animacion de inicio del juego
 Animacion explosiones
 Armas
 Musica
+
+
+
+#TODO
+ARREGLAR BOMBAS
+ARREGLAR ENEMIGOS QUE NO SE ELIMINAN DEL MAPA
+IMPLEMENTAR A CLERIC
+AÑADIR OMITIR A ITEM
+
+
 
 '''
 # Inicialización de Pygame
@@ -124,22 +135,13 @@ class Game:
         self.frozen_enemies = False  # Para control global
 
     def start_game(self, character_type):
-        self.current_level_index = 3
+        self.current_level_index = 2
         current_level = self.levels[self.current_level_index]
 
 
         if self.current_level_index >= 3:
-            spawn_x = current_level.player_spawn_x if hasattr(current_level, 'player_spawn_x') else TILE_SIZE
-            spawn_y = current_level.player_spawn_y if hasattr(current_level, 'player_spawn_y') else TILE_SIZE
-            # Posicionar cámara para mostrar la sala de spawn inicialmente
-            self.camera.camera.x = -max(0, min(
-                current_level.player_spawn_x - WIDTH // 2,
-                MAP_WIDTH - WIDTH
-            ))
-            self.camera.camera.y = -max(0, min(
-                current_level.player_spawn_y - HEIGHT // 2,
-                MAP_HEIGHT - HEIGHT
-            ))
+            spawn_x = 120 // TILE_SIZE
+            spawn_y = 200 // TILE_SIZE
         else:
             spawn_x = 1
             spawn_y = 1
@@ -406,6 +408,33 @@ class Game:
 
         return True
 
+    def draw_debug_info(self, surface):
+        """Dibuja información de debug en la pantalla"""
+        if not hasattr(self, 'player') or not hasattr(self, 'current_level_index'):
+            return
+
+        current_level = self.levels[self.current_level_index]
+        debug_info = [
+            f"Nivel: {self.current_level_index + 1}",
+            f"Pos Jugador: ({self.player.rect.x}, {self.player.rect.y})",
+            f"Pos Cámara: ({self.camera.camera.x}, {self.camera.camera.y})",
+            f"Entrada abierta: {'Sí' if hasattr(current_level, 'entrance_block') and current_level.entrance_block.destroyed else 'No'}"
+        ]
+
+        if current_level.difficulty == Difficulty.FINAL_BOSS:
+            boss = next((e for e in current_level.enemies if isinstance(e, Boss)), None)
+            if boss:
+                debug_info.extend([
+                    f"Jefe Estado: {boss.state}",
+                    f"Jefe Vida: {boss.health}/{boss.max_health}",
+                    f"Jefe Pos: ({boss.rect.x}, {boss.rect.y})"
+                ])
+
+        font = pygame.font.SysFont(None, 24)
+        for i, info in enumerate(debug_info):
+            text = font.render(info, True, (255, 255, 255))
+            surface.blit(text, (10, 10 + i * 25))
+
     def update(self):
         if self.state != GameState.GAME or not self.player:
             return
@@ -579,6 +608,7 @@ class Game:
 
         # Dibujar jugador
         self.player.draw(window)
+        self.draw_debug_info(window)
         # Dibujar HUD
         lives_text = DEFAULT_FONT.render(f"Vidas: {self.player.lives}", True, WHITE)
         score_text = DEFAULT_FONT.render(f"Puntos: {self.score}", True, WHITE)
