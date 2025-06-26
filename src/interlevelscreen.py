@@ -1,8 +1,8 @@
 import pygame
 import random
 import os
-from src.modules.utils import WHITE, BLACK, WIDTH, DEFAULT_FONT, TITLE_FONT, GREEN
-from src.modules.button import Button
+from utils import WHITE, BLACK, WIDTH, DEFAULT_FONT, TITLE_FONT, GREEN
+from button import Button
 
 
 class InterLevelScreen:

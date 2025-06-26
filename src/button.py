@@ -1,5 +1,5 @@
 import pygame
-from modules.utils import WHITE
+from utils import WHITE
 
 
 class Button:

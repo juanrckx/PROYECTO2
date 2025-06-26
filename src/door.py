@@ -1,5 +1,5 @@
 import pygame
-from src.modules.utils import GREEN, RED, TILE_SIZE
+from utils import GREEN, RED, TILE_SIZE
 
 
 class Door:

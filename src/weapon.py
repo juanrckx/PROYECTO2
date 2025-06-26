@@ -2,8 +2,8 @@ import math
 
 import pygame
 
-from modules.boss import Boss
-from modules.utils import RED, WIDTH, HEIGHT
+from boss import Boss
+from utils import RED, WIDTH, HEIGHT
 
 class Weapon:
     def __init__(self, owner):

@@ -2,13 +2,13 @@ import sys
 
 import pygame
 
-from modules.boss import Boss
-from modules.button import Button
-from modules.interlevelscreen import InterLevelScreen
-from modules.level import Level
-from modules.player import Player
-from modules.powerups import Powerup
-from modules.utils import GameState, Difficulty, GRAY, GREEN, RED, BLUE, BLACK, HEIGHT, WIDTH, TILE_SIZE, FPS, WHITE, \
+from boss import Boss
+from button import Button
+from interlevelscreen import InterLevelScreen
+from level import Level
+from player import Player
+from powerups import Powerup
+from utils import GameState, Difficulty, GRAY, GREEN, RED, BLUE, BLACK, HEIGHT, WIDTH, TILE_SIZE, FPS, WHITE, \
     ScrollingBackground
 
 '''
@@ -54,7 +54,7 @@ info = pygame.display.Info()
 
 real_width, real_height = info.current_w, info.current_h
 
-from modules.utils import load_fonts
+from utils import load_fonts
 DEFAULT_FONT = load_fonts(20)
 TITLE_FONT = load_fonts(30)
 
@@ -77,7 +77,6 @@ class Game:
         self.player = None
         self.score = 0
         self.start_time = 0
-        #self.font = custom
         self.background = ScrollingBackground("assets/textures/bg/background.png")
 
         # Botones del menú
@@ -124,39 +123,36 @@ class Game:
         self.frozen_enemies = False  # Para control global
 
     def start_game(self, character_type):
-        self.levels = [
-            Level(0, Difficulty.EASY, self),
-            Level(1, Difficulty.MEDIUM, self),
-            Level(2, Difficulty.HARD, self),
-            Level(3, Difficulty.FINAL_BOSS, self)]
-        self.current_level_index = 3
+        self.current_level_index = 2
         current_level = self.levels[self.current_level_index]
 
 
+        if self.current_level_index >= 3:
+            spawn_x = current_level.player_spawn_x if hasattr(current_level, 'player_spawn_x') else TILE_SIZE
+            spawn_y = current_level.player_spawn_y if hasattr(current_level, 'player_spawn_y') else TILE_SIZE
+        else:
+            spawn_x = 1
+            spawn_y = 1
+
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(1, 1, 99, 15, BLUE, 51, 0,  self )
+            self.player = Player(spawn_x, spawn_y, 99, 4, BLUE, 51, 0,  self )
         elif character_type == 1:  # Tanky
-            self.player = Player(1, 1, 5, 2, GREEN, 3, 1,  self)
+            self.player = Player(spawn_x, spawn_y, 5, 2, GREEN, 3, 1,  self)
         elif character_type == 2:  # Pyro
-            self.player = Player(1, 1, 2, 5, RED, 8, 2,  self)
+            self.player = Player(spawn_x, spawn_y, 2, 5, RED, 8, 2,  self)
         elif character_type == 3: #Cleric
-            self.player = Player(1, 1, 2, 4, WHITE, 4, 3,  self)
+            self.player = Player(spawn_x, spawn_y, 2, 4, WHITE, 4, 3,  self)
 
 
 
-        boss_count = sum(1 for e in current_level.enemies if isinstance(e, Boss))
-        print(f"JEFES ENCONTRADOS EN EL NIVEL: {boss_count}")
-        self.player.rect.x = 9 * TILE_SIZE  # Centro del área segura
-        self.player.rect.y = 7 * TILE_SIZE
-        self.player.hitbox.x = self.player.rect.x + 5
-        self.player.hitbox.y = self.player.rect.y + 5
 
         self.state = GameState.GAME
+        if self.current_level_index < 3:
+            self.score = 0
+            self.start_time = pygame.time.get_ticks()
         current_level.generate_level()
         self.ensure_starting_position()
-        self.score = 0
-        self.start_time = pygame.time.get_ticks()
 
 
     def ensure_starting_position(self):
@@ -194,13 +190,24 @@ class Game:
             current_level.difficulty,
             self)
 
+        if self.current_level_index == 3:  # Índice del nivel del jefe
+            boss_count = sum(1 for e in current_level.enemies if isinstance(e, Boss))
+            if boss_count == 0:
+                boss = Boss(8 * TILE_SIZE, 7 * TILE_SIZE)
+                boss.set_level(current_level)
+                current_level.enemies.append(boss)
+            elif boss_count > 1:
+                # Eliminar jefes adicionales
+                current_level.enemies = [e for e in current_level.enemies
+                                         if not isinstance(e, Boss)]
+                current_level.enemies.append(Boss(8 * TILE_SIZE, 7 * TILE_SIZE))
+
         # 4. Resetear propiedades del jugador
         self._reset_player_for_new_level()
 
         # 5. Limpiar efectos temporales
         self._clear_temporary_effects()
-
-        self.ensure_starting_position()
+        current_level.generate_level()
 
         print(f"Level {self.current_level_index + 1} loaded, {len(self.levels)}")
         return True
@@ -310,6 +317,9 @@ class Game:
 
             if event.type == pygame.USEREVENT + 20:
                 self.player.can_place_bombs = True
+            if event.type == pygame.USEREVENT + 30:
+                if self.player:
+                    self.player.controls_inverted = False
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_click = True
@@ -396,16 +406,11 @@ class Game:
         self.player.update_phase_effect(current_level)
         keys = pygame.key.get_pressed()
 
-        if current_level.difficulty == Difficulty.FINAL_BOSS:
-            print("Estás en el nivel del jefe final")
-            if not any(isinstance(enemy, Boss) for enemy in current_level.enemies):
-                print("ERROR: No se encontró al jefe en el nivel")
-                current_level.generate_level()  # Regenerar si hay problemas
+
 
         if current_level.difficulty != Difficulty.FINAL_BOSS:
             if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
                 self.between_levels()
-                current_level.update_boss_powerups()
 
 
         # Movimiento del jugador
@@ -421,11 +426,10 @@ class Game:
             if isinstance(enemy, Boss):  # Comportamiento especial para el jefe
                 enemy.update(
                     player=self.player,
-                    current_time=pygame.time.get_ticks(),
                     arena_blocks=current_level.map
                 )
             else:  # Comportamiento normal para enemigos
-                enemy.update(current_level.map)
+                enemy.update(self.player, current_level.map)
 
         self.player.update_weapon(current_level)
 
@@ -452,6 +456,8 @@ class Game:
                 self.state = GameState.GAME_OVER
                 return
         if current_level.difficulty == Difficulty.FINAL_BOSS:
+            current_level.update_boss_powerups()
+
             for enemy in current_level.enemies:
                 if isinstance(enemy, Boss):
                     for bomb in enemy.boss_bombs[:]:
@@ -473,16 +479,7 @@ class Game:
                 self.between_levels()
                 self.score += 500
 
-        if self.state == GameState.GAME:
-            current_level = self.levels[self.current_level_index]
-            if current_level.difficulty == Difficulty.FINAL_BOSS and not any(
-                    isinstance(e, Boss) for e in current_level.enemies):
-                print("¡ERROR CRÍTICO! Regenerando nivel del jefe...")
-                current_level.generate_level()
-                if not any(isinstance(e, Boss) for e in current_level.enemies):
-                    print("¡Fallo catastrófico! Creando jefe manualmente...")
-                    boss = Boss(10 * TILE_SIZE, 7 * TILE_SIZE)
-                    current_level.enemies.append(boss)
+
 
 
 

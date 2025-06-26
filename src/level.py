@@ -1,16 +1,17 @@
 import pygame
 import random
 
-from src.modules.boss import Boss
-from src.modules.powerups import Powerup
-from src.modules.utils import Difficulty, TILE_SIZE, PowerupType
-from src.modules.enemy import Enemy
-from src.modules.block import Block
-from src.modules.door import Door, Key
+from src.boss import Boss
+from powerups import Powerup
+from utils import Difficulty, TILE_SIZE, PowerupType, WIDTH, HEIGHT
+from enemy import Enemy
+from block import Block
+from door import Door, Key
 
 
 class Level:
     def __init__(self, number, difficulty, game):
+
         self.number = number
         self.difficulty = difficulty
         self.game = game
@@ -29,7 +30,6 @@ class Level:
         self.last_powerup_timer = 0
 
     def generate_level(self):
-        print(f"\n--- GENERANDO NIVEL {self.number} [{self.difficulty}] ---")
 
         # Resetear contenido
         self.map = []
@@ -37,24 +37,12 @@ class Level:
         self.powerups = []
 
         if self.difficulty == Difficulty.FINAL_BOSS:
-            print("MODO JEFE FINAL - Generando arena especial")
-            self.generate_boss_arena()
+            self._generate_boss_arena()
         else:
-            print("MODO NIVEL NORMAL")
             self.generate_map()
             self.generate_door()
             self.generate_enemies()
 
-        # Reporte final
-        print(f"RESULTADO:")
-        print(f"- Bloques: {len(self.map)}")
-        print(f"- Enemigos: {len(self.enemies)}")
-        print(f"- Powerups: {len(self.powerups)}")
-        if self.difficulty == Difficulty.FINAL_BOSS:
-            bosses = [e for e in self.enemies if isinstance(e, Boss)]
-            print(f"- Jefes: {len(bosses)}")
-            if not bosses:
-                print("¡ERROR: No se generó el jefe!")
 
     def generate_map(self):
         width, height = 20, 15
@@ -85,61 +73,163 @@ class Level:
                 self.map = [b for b in self.map if not (b.rect.x == j * TILE_SIZE and b.rect.y == k * TILE_SIZE)]
 
         self.ensure_door_access()
+        #self.would_trap_player(10, 10, safe_zone)
 
-    def generate_boss_arena(self):
-        width, height = 20, 15
+    def _generate_boss_arena(self):
+        """Versión FINAL verificada y funcional"""
         self.map = []
-        self.door = None
-        self.door_block_position = None
-        self.key = None
         self.enemies = []
-        self.powerups = []
 
-        for x in range(width):
-            for y in range(height):
-                if x in (0, width - 1) or y in (0, height - 1):
+        # 1. Configuración con TILE_SIZE=40
+        ARENA_W, ARENA_H = 20, 15  # Tamaño en tiles
+        SPAWN_SIZE = 5  # Tamaño sala de spawn
+
+        # 2. Generar bordes de la arena principal
+        for x in range(ARENA_W):
+            for y in range(ARENA_H):
+                if x == 0 or x == ARENA_W - 1 or y == 0 or y == ARENA_H - 1:
                     self.map.append(Block(x, y, destructible=False))
 
+        # 3. Sala de spawn externa (5x5 tiles)
+        SPAWN_LEFT = -SPAWN_SIZE
+        SPAWN_TOP = (ARENA_H - SPAWN_SIZE) // 2
 
-        safe_zone = [(9, 7), (10, 7), (11, 8),
-                     (9, 8), (10, 8), (11, 8),
-                     (9, 9), (10, 9), (11, 9)]
-        for x in safe_zone:
-            self.map = [b for b in self.map if not (b.rect.x == x * TILE_SIZE and b.rect.y == y * TILE_SIZE)]
+        for x in range(SPAWN_LEFT, SPAWN_LEFT + SPAWN_SIZE):
+            for y in range(SPAWN_TOP, SPAWN_TOP + SPAWN_SIZE):
+                # Dejar entrada en el centro derecho
+                if not (x == SPAWN_LEFT + SPAWN_SIZE - 1 and y == SPAWN_TOP + SPAWN_SIZE // 2):
+                    self.map.append(Block(x, y, destructible=False))
 
-        boss_x, boss_y = width // 2, height // 2
-        self.spawn_boss(boss_x, boss_y)
+        # 4. Pasillo de conexión (3 tiles)
+        for i in range(3):
+            # Pared superior
+            self.map.append(Block(SPAWN_LEFT + SPAWN_SIZE + i, SPAWN_TOP - 1, destructible=False))
+            # Pared inferior
+            self.map.append(Block(SPAWN_LEFT + SPAWN_SIZE + i, SPAWN_TOP + SPAWN_SIZE, destructible=False))
 
-        powerup_position = [(3, 7), (16, 7), (9, 5), (10, 12)]
-        for x, y in powerup_position:
-            if random.random() < 0.7:
-                self.powerups.append(Powerup(x * TILE_SIZE, y * TILE_SIZE))
+        # 5. Bloque de entrada (convertido a píxeles)
+        self.entrance_block = Block(0, SPAWN_TOP + SPAWN_SIZE // 2, destructible=False)
+        self.entrance_block.destroyed = True
+        self.map.append(self.entrance_block)
 
-        obstacle_positions = [
-            (3, 3), (16, 3), (3, 11), (16, 11),  # Esquinas
-            (6, 6), (13, 6), (6, 8), (13, 8),  # Bloques laterales
-            (9, 3), (10, 3), (11, 3),  # Parte superior central
-            (9, 11), (10, 11), (11, 11)]  # Parte inferior central
-        for x, y in obstacle_positions:
-            # 50% de probabilidad de ser destructible
-            destructible = random.choice([True, False])
-            self.map.append(Block(x, y, destructible=destructible))
+        # 6. Posición de spawn del jugador (en píxeles)
+        self.player_spawn_x = (SPAWN_LEFT + SPAWN_SIZE // 2) * TILE_SIZE
+        self.player_spawn_y = (SPAWN_TOP + SPAWN_SIZE // 2) * TILE_SIZE
 
-        print("Arena del jefe generada:")
-        print(f"- Bloques: {len(self.map)}")
-        print(f"- Powerups: {len(self.powerups)}")
-        print(f"- Posición del jefe: ({boss_x}, {boss_y})")
+        # 7. Posicionar al boss (en píxeles)
+        self.spawn_boss((ARENA_W // 2) * TILE_SIZE, (ARENA_H // 2) * TILE_SIZE)
+
+
+        # Debug visual mejorado
+        self._debug_draw_blocks()
+        self._debug_visual_map()
+        self._debug_verify_positions()
+
+    def _debug_draw_blocks(self):
+        """Dibuja los bloques para verificación"""
+        print("\n=== DEBUG DE BLOQUES ===")
+        print(f"Total bloques: {len(self.map)}")
+
+        # Agrupar por coordenadas Y
+        y_coords = sorted({b.rect.y for b in self.map})
+
+        for y in y_coords:
+            line = ""
+            x_coords = sorted(b.rect.x for b in self.map if b.rect.y == y)
+
+            for x in range(min(x_coords), max(x_coords) + TILE_SIZE, TILE_SIZE):
+                block = next((b for b in self.map if b.rect.x == x and b.rect.y == y), None)
+                line += "▓" if block else " "
+
+            print(f"Y={y}: {line}")
+
+    def _debug_visual_map(self):
+        """Debug visual mejorado"""
+        print("\n=== MAPA VISUAL ===")
+        grid = [[' ' for _ in range(25)] for _ in range(15)]
+
+        # Mapear bloques
+        for block in self.map:
+            x = block.rect.x // TILE_SIZE
+            y = block.rect.y // TILE_SIZE
+            if -5 <= x < 20 and 0 <= y < 15:  # Rango ampliado para spawn
+                char = '▓' if not block.destructible else '░'
+                grid[y][x + 5] = char  # Ajuste para coordenadas negativas
+
+        # Mapear jugador
+        px, py = self.player_spawn_x // TILE_SIZE, self.player_spawn_y // TILE_SIZE
+        if -5 <= px < 20 and 0 <= py < 15:
+            grid[py][px + 5] = 'P'
+
+        # Mapear boss
+        for enemy in self.enemies:
+            if isinstance(enemy, Boss):
+                bx, by = enemy.rect.centerx // TILE_SIZE, enemy.rect.centery // TILE_SIZE
+                if 0 <= bx < 20 and 0 <= by < 15:
+                    grid[by][bx] = 'B'
+
+        # Imprimir grid
+        for row in grid:
+            print(''.join(row))
+        print("Coordenadas (X: -5 a 19, Y: 0 a 14)")
+
+    def _debug_verify_positions(self):
+        """Verificación EXTRA de posiciones"""
+        print("\n=== VERIFICACIÓN DE POSICIONES ===")
+        print(f"Spawn jugador: ({self.player_spawn_x}, {self.player_spawn_y})")
+        print(f"Total bloques: {len(self.map)}")
+        print(f"Total enemigos: {len(self.enemies)}")
+
+        # Verificar que el boss está en la posición correcta
+        for enemy in self.enemies:
+            if isinstance(enemy, Boss):
+                print(f"Boss en: ({enemy.rect.x}, {enemy.rect.y})")
+
+        # Verificar bordes
+        border_count = sum(1 for b in self.map if not b.destructible)
+        print(f"Bloques de borde: {border_count}/{(20 + 15) * 2} esperados")
+
+
+
 
     def spawn_boss(self, boss_x, boss_y):
+        self.map = [b for b in self.map if not (b.rect.x == boss_x * TILE_SIZE and b.rect.y == boss_y * TILE_SIZE)]
+
         for dx in [-1, 0, 1]:
             for dy in [-1, 0, 1]:
+                if dx == 0 and dy == 0:
+                    continue
                 clear_x, clear_y = boss_x + dx, boss_y + dy
-                self.map = [b for b in self.map if not (b.x == clear_x and b.y == clear_y)]
+                if 0 <= clear_x < 20 and 0 <= clear_y < 15:
+                    self.map = [b for b in self.map if
+                                not (b.rect.x == clear_x * TILE_SIZE and b.rect.y == clear_y * TILE_SIZE)]
 
-            # Crear jefe
-        boss = Boss(x * TILE_SIZE, y * TILE_SIZE)
+        boss = Boss(boss_x * TILE_SIZE, boss_y * TILE_SIZE)
+        boss.set_level(self)
         self.enemies.append(boss)
-        print(f"JEFE GENERADO EN ({boss_x}, {boss_y}) - TAMAÑO: {boss.rect.size}")
+
+    def check_player_entrance(self, player):
+        """Verifica si el jugador entra a la arena y cierra la entrada"""
+        if not hasattr(self, 'entrance_block') or not self.entrance_block.destroyed:
+            return
+
+        # Área de activación (último tile del pasillo)
+        entrance_rect = pygame.Rect(
+            self.entrance_block.rect.x - TILE_SIZE,
+            self.entrance_block.rect.y - TILE_SIZE,
+            TILE_SIZE * 2,
+            TILE_SIZE * 2
+        )
+
+        if player.hitbox.colliderect(entrance_rect):
+            # Cerrar la entrada
+            self.entrance_block.destroyed = False
+
+            # Activar el boss
+            for enemy in self.enemies:
+                if isinstance(enemy, Boss):
+                    enemy.state = "active"
+
 
     def ensure_door_access(self):
         """Garantiza que haya al menos un camino a la puerta"""
@@ -170,14 +260,12 @@ class Level:
                     # Eliminar cualquier bloque existente en esta posición
                     self.map = [
                         b for b in self.map
-                        if not (b.rect.x == path_x * TILE_SIZE and
-                                b.rect.y == path_y * TILE_SIZE)
+                        if not (b.rect.x // TILE_SIZE == path_x and
+                                b.rect.y // TILE_SIZE == path_y)
                     ]
 
-
-                    # 50% de probabilidad de ser destructible
-                    is_destructible = random.choice([True, False])
-                    self.map.append(Block(path_x, path_y, destructible=is_destructible))
+                    # Crear un bloque destructible (para que siempre se pueda abrir camino)
+                    self.map.append(Block(path_x, path_y, destructible=True))
 
     def would_trap_player(self, x, y, safe_zone):
         trap_patterns = ([(x, y), (x + 1, y), (x, y + 1)], [(x,y), (x - 1,y), (x, y - 1)], #Patron L
@@ -329,10 +417,13 @@ class Level:
                 if enemy.state != "dead":
                     for exp_rect in bomb.explosion_rects:
                         if enemy.rect.colliderect(exp_rect):
-                            enemy.enemy_take_damage(amount=2)
+                            if isinstance(enemy, Boss):
+                                enemy.boss_take_damage(amount=2)
+                            else:
+                                    enemy.enemy_take_damage(amount=2)
                             if enemy.state == "dead":
                                 self.enemies.remove(enemy)
-                            break
+                                break
 
 
     def generate_boss_powerup(self):

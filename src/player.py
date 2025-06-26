@@ -1,9 +1,10 @@
 import random
 
 import pygame
-from modules.utils import TILE_SIZE, PowerupType, WIDTH, HEIGHT
-from modules.bomb import Bomb
-from modules.weapon import Weapon
+from utils import TILE_SIZE, PowerupType, WIDTH, HEIGHT, Difficulty
+from bomb import Bomb
+from weapon import Weapon
+from boss import boss_debug
 
 class Player:
     def __init__(self, x, y, lives, speed, color, bomb_capacity, character_type, game):
@@ -239,7 +240,11 @@ class Player:
 
 
     def move(self, dx, dy, game_map, current_level):
+        is_boss_level = hasattr(current_level, 'difficulty') and current_level.difficulty == Difficulty.FINAL_BOSS
 
+        if hasattr(self, 'controls_inverted') and self.controls_inverted:
+            dx, dy = -dx, -dy
+            boss_debug(f"Controles invertidos aplicados. Input: ({dx}, {dy})")
         if dx < 0:
             self.facing = "left"
         elif dx > 0:
@@ -367,7 +372,6 @@ class Player:
 
     def shoot(self, direction):
         self.weapon.shoot(direction)
-        print(self.damage)
 
 
     def get_explosion_pattern(self):

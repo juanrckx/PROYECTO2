@@ -10,7 +10,7 @@ def load_fonts(size=20):
         if not pygame.font.get_init():
             pygame.font.init()
 
-        font_path = os.path.join("assets", "fonts", "default.ttf")
+        font_path = os.path.join("..", "assets", "fonts", "default.ttf")
         if os.path.exists(font_path):
             return pygame.font.Font(font_path, size)
         else:
@@ -29,16 +29,15 @@ def load_fonts(size=20):
 DEFAULT_FONT = None
 TITLE_FONT = None
 
-
 DEFAULT_FONT = load_fonts(20)
 TITLE_FONT = load_fonts(30)
-
 
 WIDTH, HEIGHT = 800, 600
 TILE_SIZE = 40
 FPS = 60
-GREEN, RED, WHITE, YELLOW, BROWN, GRAY, BLUE, ORANGE, BLACK = ((0, 255, 0), (255, 0, 0), (255, 255, 255), (255, 215, 0), (150, 75, 0),
-                                                        (100, 100, 100), (0, 0, 255), (255, 100, 0), (0, 0, 0))
+GREEN, RED, WHITE, YELLOW, BROWN, GRAY, BLUE, ORANGE, BLACK = ((0, 255, 0), (255, 0, 0), (255, 255, 255), (255, 215, 0),
+                                                               (150, 75, 0),
+                                                               (100, 100, 100), (0, 0, 255), (255, 100, 0), (0, 0, 0))
 
 
 class GameState(Enum):
@@ -56,6 +55,7 @@ class Difficulty(Enum):
     HARD = 2
     FINAL_BOSS = 3
 
+
 class PowerupType(Enum):
     EXTRA_LIFE = 0
     EXTRA_BOMB = 1
@@ -65,6 +65,7 @@ class PowerupType(Enum):
     BOMB_IMMUNITY = 5
     PHASE_TROUGH = 6
     FREEZE_ENEMIES = 7
+
 
 class ScrollingBackground:
     def __init__(self, image_path, speed=1):

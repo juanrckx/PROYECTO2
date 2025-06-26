@@ -1,5 +1,5 @@
 import pygame
-from src.modules.utils import  GRAY, TILE_SIZE
+from utils import  GRAY, TILE_SIZE
 
 class Block:
     def __init__(self, x, y, destructible=False):

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pygame
 import random
-from modules.utils import PowerupType
+from utils import PowerupType
 
 class Powerup:
     _sprites = None

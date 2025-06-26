@@ -1,7 +1,7 @@
 import pygame
 
-from src.modules.powerups import Powerup
-from src.modules.utils import TILE_SIZE
+from powerups import Powerup
+from utils import TILE_SIZE
 import random
 
 class Enemy:
@@ -31,7 +31,7 @@ class Enemy:
             self.color = (139, 69, 19)
 
 
-    def update(self, game_map):
+    def update(self, player,  game_map):
         if hasattr(self, 'game') and getattr(self.game, 'frozen_enemies', False):
             return
         if self.state == "dead":
@@ -74,6 +74,7 @@ class Enemy:
         print(self.health)
         if self.health <= 0:
             self.state = "dead"
+
 
 
     def draw(self, surface):
