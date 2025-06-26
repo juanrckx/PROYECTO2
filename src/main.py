@@ -9,7 +9,7 @@ from level import Level
 from player import Player
 from powerups import Powerup
 from utils import GameState, Difficulty, GRAY, GREEN, RED, BLUE, BLACK, HEIGHT, WIDTH, TILE_SIZE, FPS, WHITE, \
-    ScrollingBackground
+    ScrollingBackground, Camera, MAP_WIDTH, MAP_HEIGHT
 
 '''
 
@@ -78,6 +78,7 @@ class Game:
         self.score = 0
         self.start_time = 0
         self.background = ScrollingBackground("assets/textures/bg/background.png")
+        self.camera = Camera(WIDTH, HEIGHT)
 
         # Botones del menú
         self.start_button = Button(
@@ -123,13 +124,22 @@ class Game:
         self.frozen_enemies = False  # Para control global
 
     def start_game(self, character_type):
-        self.current_level_index = 2
+        self.current_level_index = 3
         current_level = self.levels[self.current_level_index]
 
 
         if self.current_level_index >= 3:
             spawn_x = current_level.player_spawn_x if hasattr(current_level, 'player_spawn_x') else TILE_SIZE
             spawn_y = current_level.player_spawn_y if hasattr(current_level, 'player_spawn_y') else TILE_SIZE
+            # Posicionar cámara para mostrar la sala de spawn inicialmente
+            self.camera.camera.x = -max(0, min(
+                current_level.player_spawn_x - WIDTH // 2,
+                MAP_WIDTH - WIDTH
+            ))
+            self.camera.camera.y = -max(0, min(
+                current_level.player_spawn_y - HEIGHT // 2,
+                MAP_HEIGHT - HEIGHT
+            ))
         else:
             spawn_x = 1
             spawn_y = 1
@@ -420,7 +430,7 @@ class Game:
         if keys[pygame.K_a]: dx = -1
         if keys[pygame.K_d]: dx = 1
 
-        self.player.move(dx, dy, current_level.map, current_level)
+        self.player.move(dx, dy, current_level.map, current_level, self.camera)
 
         for enemy in current_level.enemies[:]:
             if isinstance(enemy, Boss):  # Comportamiento especial para el jefe
@@ -536,9 +546,18 @@ class Game:
         current_level = self.levels[self.current_level_index]
 
         # Dibujar mapa
-        for block in current_level.map:
-            if not block.destroyed:
-                block.draw(window)
+        if self.current_level_index >= 3:
+            for block in current_level.map:
+                if not block.destroyed:
+                    adjusted_rect = self.camera.apply(block)
+                    pygame.draw.rect(window, (100, 100, 100), adjusted_rect)
+
+            player_rect = self.camera.apply(self.player)
+            pygame.draw.rect(window, self.player.color, player_rect)
+        else:
+            for block in current_level.map:
+                if not block.destroyed:
+                    block.draw(window)
 
         # Dibujar puerta y llave
         if current_level.difficulty != Difficulty.FINAL_BOSS:

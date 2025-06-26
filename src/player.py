@@ -1,7 +1,7 @@
 import random
 
 import pygame
-from utils import TILE_SIZE, PowerupType, WIDTH, HEIGHT, Difficulty
+from utils import TILE_SIZE, PowerupType, WIDTH, HEIGHT, Difficulty, MAP_WIDTH, MAP_HEIGHT
 from bomb import Bomb
 from weapon import Weapon
 from boss import boss_debug
@@ -239,9 +239,7 @@ class Player:
 
 
 
-    def move(self, dx, dy, game_map, current_level):
-        is_boss_level = hasattr(current_level, 'difficulty') and current_level.difficulty == Difficulty.FINAL_BOSS
-
+    def move(self, dx, dy, game_map, current_level, camera=None):
         if hasattr(self, 'controls_inverted') and self.controls_inverted:
             dx, dy = -dx, -dy
             boss_debug(f"Controles invertidos aplicados. Input: ({dx}, {dy})")
@@ -293,18 +291,39 @@ class Player:
                     self.hitbox.y = new_hitbox.y
                     self.rect.y = self.hitbox.y - 5
 
+            # Límites del mapa según el nivel
+            if current_level.difficulty == Difficulty.FINAL_BOSS:
+                # Para el nivel del boss usamos el mapa extendido
+                self.rect.x = max(0, min(MAP_WIDTH - self.rect.width, self.rect.x))
+                self.rect.y = max(0, min(MAP_HEIGHT - self.rect.height, self.rect.y))
+            else:
+                # Para niveles normales usamos las dimensiones estándar
+                self.rect.x = max(0, min(WIDTH - self.rect.width, self.rect.x))
+                self.rect.y = max(0, min(HEIGHT - self.rect.height, self.rect.y))
 
+            # Actualizar hitbox después de movimiento
+            self.hitbox.x = self.rect.x + 5
+            self.hitbox.y = self.rect.y + 5
 
+            # Actualizar cámara si estamos en el nivel del boss
+            if camera and current_level.difficulty == Difficulty.FINAL_BOSS:
+                camera.update(self)
 
+            # Recolección de powerups
+            for powerup in current_level.powerups[:]:
+                if self.hitbox.colliderect(powerup.rect):
+                    if self.store_powerup(powerup):
+                        current_level.powerups.remove(powerup)
 
-        for powerup in current_level.powerups:
-            if self.hitbox.colliderect(powerup.rect):
-                if self.store_powerup(powerup):
-                    current_level.powerups.remove(powerup)
+            # Actualización de animación
+            self.update_animation()
 
-        self.rect.x = max(0, min(WIDTH - TILE_SIZE, self.rect.x))
-        self.rect.y = max(0, min(HEIGHT - TILE_SIZE, self.rect.y))
-        self.update_animation()
+            # Debug de posición (opcional)
+
+        print(f"Posición actual: ({self.rect.x}, {self.rect.y})")
+        print(f"Tile actual: ({self.rect.x // TILE_SIZE}, {self.rect.y // TILE_SIZE})")
+        if camera:
+            print(f"Offset cámara: ({camera.camera.x}, {camera.camera.y})")
 
 
 

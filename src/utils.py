@@ -32,6 +32,7 @@ TITLE_FONT = None
 DEFAULT_FONT = load_fonts(20)
 TITLE_FONT = load_fonts(30)
 
+MAP_WIDTH, MAP_HEIGHT = 1280, 800
 WIDTH, HEIGHT = 800, 600
 TILE_SIZE = 40
 FPS = 60
@@ -83,3 +84,24 @@ class ScrollingBackground:
     def draw(self, surface):
         surface.blit(self.image, (self.scroll, 0))
         surface.blit(self.image, (self.scroll + self.width, 0))
+
+class Camera:
+    def __init__(self, width, height):
+        self.camera = pygame.Rect(0, 0, width, height)
+        self.width = width
+        self.height = height
+        self.smoothness = 0.15
+
+    def apply(self, entity):
+        return entity.rect.move(self.camera.topleft)
+
+    def update(self, target):
+
+        x = -target.rect.centerx + self.width // 2
+        y = -target.rect.centery + self.width // 2
+
+        x = min(0, max(-(MAP_WIDTH - self.width), x))
+        y = min(0, max(-(MAP_HEIGHT - self.height), y))
+
+        self.camera.x += (x - self.camera.x) * self.smoothness
+        self.camera.y += (y - self.camera.y) * self.smoothness

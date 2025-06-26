@@ -76,54 +76,41 @@ class Level:
         #self.would_trap_player(10, 10, safe_zone)
 
     def _generate_boss_arena(self):
-        """Versión FINAL verificada y funcional"""
+        """Generación corregida de la arena"""
         self.map = []
         self.enemies = []
 
-        # 1. Configuración con TILE_SIZE=40
-        ARENA_W, ARENA_H = 20, 15  # Tamaño en tiles
-        SPAWN_SIZE = 5  # Tamaño sala de spawn
+        # Dimensiones en tiles
+        ARENA_W, ARENA_H = 20, 15
+        SPAWN_SIZE = 5
 
-        # 2. Generar bordes de la arena principal
+        # 1. Sala de spawn (5x5) en posición visible (40-240px, 120-320px)
+        SPAWN_X, SPAWN_Y = 1, 3  # En tiles
+        for x in range(SPAWN_SIZE):
+            for y in range(SPAWN_SIZE):
+                if not (x == SPAWN_SIZE - 1 and y == SPAWN_SIZE // 2):  # Entrada
+                    self.map.append(Block(SPAWN_X + x, SPAWN_Y + y, destructible=False))
+
+        # 2. Posición de spawn centrada
+        self.player_spawn_x = (SPAWN_X + SPAWN_SIZE // 2) * TILE_SIZE  # 120px
+        self.player_spawn_y = (SPAWN_Y + SPAWN_SIZE // 2) * TILE_SIZE  # 200px
+
+        # 3. Arena principal (20x15) desplazada
+        ARENA_OFFSET_X, ARENA_OFFSET_Y = 8, 2  # En tiles (320px, 80px)
         for x in range(ARENA_W):
             for y in range(ARENA_H):
                 if x == 0 or x == ARENA_W - 1 or y == 0 or y == ARENA_H - 1:
-                    self.map.append(Block(x, y, destructible=False))
+                    self.map.append(Block(ARENA_OFFSET_X + x, ARENA_OFFSET_Y + y, destructible=False))
 
-        # 3. Sala de spawn externa (5x5 tiles)
-        SPAWN_LEFT = -SPAWN_SIZE
-        SPAWN_TOP = (ARENA_H - SPAWN_SIZE) // 2
+        # 4. Posicionar al BOSS en el centro de la arena
+        boss_x = (ARENA_OFFSET_X + ARENA_W // 2) * TILE_SIZE
+        boss_y = (ARENA_OFFSET_Y + ARENA_H // 2) * TILE_SIZE
+        self.spawn_boss(boss_x, boss_y)
 
-        for x in range(SPAWN_LEFT, SPAWN_LEFT + SPAWN_SIZE):
-            for y in range(SPAWN_TOP, SPAWN_TOP + SPAWN_SIZE):
-                # Dejar entrada en el centro derecho
-                if not (x == SPAWN_LEFT + SPAWN_SIZE - 1 and y == SPAWN_TOP + SPAWN_SIZE // 2):
-                    self.map.append(Block(x, y, destructible=False))
-
-        # 4. Pasillo de conexión (3 tiles)
-        for i in range(3):
-            # Pared superior
-            self.map.append(Block(SPAWN_LEFT + SPAWN_SIZE + i, SPAWN_TOP - 1, destructible=False))
-            # Pared inferior
-            self.map.append(Block(SPAWN_LEFT + SPAWN_SIZE + i, SPAWN_TOP + SPAWN_SIZE, destructible=False))
-
-        # 5. Bloque de entrada (convertido a píxeles)
-        self.entrance_block = Block(0, SPAWN_TOP + SPAWN_SIZE // 2, destructible=False)
+        # 5. Bloque de entrada
+        self.entrance_block = Block(ARENA_OFFSET_X, ARENA_OFFSET_Y + ARENA_H // 2, destructible=False)
         self.entrance_block.destroyed = True
         self.map.append(self.entrance_block)
-
-        # 6. Posición de spawn del jugador (en píxeles)
-        self.player_spawn_x = (SPAWN_LEFT + SPAWN_SIZE // 2) * TILE_SIZE
-        self.player_spawn_y = (SPAWN_TOP + SPAWN_SIZE // 2) * TILE_SIZE
-
-        # 7. Posicionar al boss (en píxeles)
-        self.spawn_boss((ARENA_W // 2) * TILE_SIZE, (ARENA_H // 2) * TILE_SIZE)
-
-
-        # Debug visual mejorado
-        self._debug_draw_blocks()
-        self._debug_visual_map()
-        self._debug_verify_positions()
 
     def _debug_draw_blocks(self):
         """Dibuja los bloques para verificación"""
