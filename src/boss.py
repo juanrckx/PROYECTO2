@@ -54,12 +54,19 @@ class Boss:
     def update(self, player, arena_blocks):
         current_time = pygame.time.get_ticks()
 
+        if self.state == "inactive":
+            return
+
         self._update_exhaustion()
         self._update_speed()
         self._handle_attacks(player, arena_blocks)
 
         if self.phase == 1:
-            self._phase_one_behavior(player,arena_blocks)
+            # Ataques cada 5 segundos
+            if current_time - self.last_attack_time > 7500:
+                self.last_attack_time = current_time
+                attack = random.choice([self._random_bombs, self._super_bombs, self._invert_controls])
+                attack(player, arena_blocks)
         else:
             self._phase_two_behavior(player,arena_blocks)
 
@@ -71,42 +78,6 @@ class Boss:
 
             # Actualización de bombas
         self.update_bombs(player, self.current_level)
-
-    def _phase_one_behavior(self, player, arena_blocks):
-        current_time = pygame.time.get_ticks()
-
-        # Cambio de dirección cada segundo
-        if current_time - self.last_attack_time > 1000:
-            self.last_move_time = current_time
-            directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-
-            # Probar direcciones hasta encontrar una válida
-            for _ in range(10):  # Máximo 10 intentos
-                self.last_direction = random.choice(directions)
-                test_rect = self.rect.copy()
-                test_rect.x += self.last_direction[0] * TILE_SIZE
-                test_rect.y += self.last_direction[1] * TILE_SIZE
-
-                # Verificar colisión con bordes y bloques
-                if not self._check_wall_collision(test_rect):
-                    break
-
-        # Aplicar movimiento
-        self.rect.x += self.last_direction[0] * self.current_speed * 0.5
-        self.rect.y += self.last_direction[1] * self.current_speed * 0.5
-
-        # Mantener dentro de límites
-        self.rect.clamp_ip(pygame.Rect(
-            TILE_SIZE, TILE_SIZE,
-            WIDTH - 2 * TILE_SIZE,
-            HEIGHT - 2 * TILE_SIZE
-        ))
-
-        # Ataques cada 5 segundos
-        if current_time - self.last_attack_time > 5000:
-            self.last_attack_time = current_time
-            attack = random.choice([self._random_bombs, self._super_bombs])
-            attack(player, arena_blocks)
 
 
     def _check_wall_collision(self, rect):
@@ -380,6 +351,7 @@ class Boss:
             boss_debug("¡CAMBIO DE FASE! (1->2)")
         elif self.health <= 0:
             self.state = "dead"
+
             boss_debug("¡JEFE DERROTADO!")
 
 

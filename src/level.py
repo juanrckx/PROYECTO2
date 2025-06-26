@@ -80,6 +80,7 @@ class Level:
         """Generación corregida de la arena con sala de spawn y pasillo"""
         self.map = []
         self.enemies = []
+        self.boss_activated = False
 
         # 1. Sala de spawn (5x5 tiles)
         SPAWN_X, SPAWN_Y = 3, 5  # Posición en tiles
@@ -89,8 +90,9 @@ class Level:
         for x in range(SPAWN_SIZE):
             for y in range(SPAWN_SIZE):
                 # Solo crear bloques en los bordes
-                if x in (0, SPAWN_SIZE-1) or y in (0, SPAWN_SIZE-1):
-                    self.map.append(Block(SPAWN_X + x, SPAWN_Y + y, destructible=False))
+                if (x in (0, SPAWN_SIZE-1)) or (y in (0, SPAWN_SIZE-1)):
+                    if not (x == SPAWN_SIZE - 1 and y == SPAWN_SIZE // 2):
+                        self.map.append(Block(SPAWN_X + x, SPAWN_Y + y, destructible=False))
 
         # 2. Pasillo (3x1 tiles)
         HALLWAY_LENGTH = 3
@@ -110,7 +112,7 @@ class Level:
 
         # 4. Bloque de entrada (se destruirá cuando el jugador entre)
         self.entrance_block = Block(ARENA_OFFSET_X, ARENA_OFFSET_Y + 7, destructible=False)
-        self.map.append(self.entrance_block)
+        self.entrance_block.destroyed = True
 
         # 5. Posicionar al jefe en el centro de la arena
         boss_x = (ARENA_OFFSET_X + 10) * TILE_SIZE
@@ -118,8 +120,26 @@ class Level:
         self.spawn_boss(boss_x, boss_y)
 
         # 6. Posición de spawn del jugador (centro de la sala de spawn)
-        self.player_spawn_x = (SPAWN_X + SPAWN_SIZE//2) * TILE_SIZE
-        self.player_spawn_y = (SPAWN_Y + SPAWN_SIZE//2) * TILE_SIZE
+        self.activation_rect = pygame.Rect(
+            (ARENA_OFFSET_X - 1) * TILE_SIZE,
+            (ARENA_OFFSET_Y + 7) * TILE_SIZE,
+            TILE_SIZE * 2,
+            TILE_SIZE * 2
+        )
+
+    def check_player_entrance(self, player):
+        if self.boss_activated:
+            return
+
+        if player.hitbox.colliderect(self.activation_rect):
+            self.entrance_block.destroyed = False
+            self.map.append(self.entrance_block)
+            self.boss_activated = True
+
+            for enemy in self.enemies:
+                if isinstance(enemy, Boss):
+                    enemy.state = "active"
+                    enemy.phase = 1
 
     def debug_draw_map(self, surface, camera=None):
         """Dibuja un mapa de debug con colores para diferentes elementos"""

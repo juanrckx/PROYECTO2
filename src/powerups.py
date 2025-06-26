@@ -45,8 +45,14 @@ class Powerup:
         if datetime.now() > self.spawn_time + self.lifespan:
             self.active = False
 
-    def draw(self, surface):
+    def draw(self, surface, camera=None):
         if not self.active:
             return
-        surface.blit(self._sprites[self.type], self.rect)
+
+        if camera:
+            render_pos = self.rect.move(camera.camera.topleft)
+        else:
+            render_pos = self.rect
+
+        surface.blit(self._sprites[self.type], render_pos,)
 

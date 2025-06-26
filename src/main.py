@@ -496,6 +496,7 @@ class Game:
                 return
         if current_level.difficulty == Difficulty.FINAL_BOSS:
             current_level.update_boss_powerups()
+            current_level.check_player_entrance(self.player)
 
             for enemy in current_level.enemies:
                 if isinstance(enemy, Boss):
@@ -575,18 +576,16 @@ class Game:
         current_level = self.levels[self.current_level_index]
 
         # Dibujar mapa
-        if self.current_level_index >= 3:
-            for block in current_level.map:
-                if not block.destroyed:
+        for block in current_level.map:
+            if not block.destroyed:
+                if self.current_level_index == 3:
                     adjusted_rect = self.camera.apply(block)
                     pygame.draw.rect(window, (100, 100, 100), adjusted_rect)
-
-            player_rect = self.camera.apply(self.player)
-            pygame.draw.rect(window, self.player.color, player_rect)
-        else:
-            for block in current_level.map:
-                if not block.destroyed:
+                else:
                     block.draw(window)
+
+        player_rect = self.camera.apply(self.player)
+        pygame.draw.rect(window, self.player.color, player_rect)
 
         # Dibujar puerta y llave
         if current_level.difficulty != Difficulty.FINAL_BOSS:
@@ -603,7 +602,7 @@ class Game:
             bomb.draw(window)
 
         for powerup in current_level.powerups:
-            powerup.draw(window)
+            powerup.draw(window, self.camera)
 
 
         # Dibujar jugador

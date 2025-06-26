@@ -18,10 +18,16 @@ class Weapon:
     def apply_damage_boost(self, amount):
         self.damage += self.base_damage + amount
 
-    def shoot(self, direction):
+    def shoot(self, direction, camera=None):
         if self.cooldown <= 0 and len(self.bullets) < self.max_bullets:
+            if camera:
+                screen_pos = camera.apply(self.owner.rect.center)
+                x, y = screen_pos.centerx, screen_pos.centery
+            else:
+                x, y = self.owner.rect.centerx, self.owner.rect.centery
+
             if self.owner.item_effects["shotgun"]:
-                self._shotgun_shot(direction)
+                self._shotgun_shot(direction, x, y)
             else:
                 dx, dy = 0, 0
                 if direction == "up":
@@ -33,16 +39,15 @@ class Weapon:
                 elif direction == "right":
                     dx = 1
 
-                self._normal_shot(dx, dy)
+                self._normal_shot(dx, dy, x, y)
 
             self.cooldown = 20
 
 
 
-    def _normal_shot(self, dx, dy):
+    def _normal_shot(self, dx, dy, x, y):
         bullet = Bullet(
-            self.owner.rect.centerx,
-            self.owner.rect.centery,
+            x, y,
             dx, dy,
             self.speed,
             self.damage,
@@ -52,9 +57,7 @@ class Weapon:
             bullet.homing = True
         self.bullets.append(bullet)
 
-    def _shotgun_shot(self, direction):
-        x = self.owner.rect.centerx
-        y = self.owner.rect.centery
+    def _shotgun_shot(self, direction, x, y):
         pellet_count = 5
         spread_angle = 45
         base_damage = self.damage * 0.6

@@ -1,4 +1,5 @@
 import os
+import random
 
 import pygame
 from enum import Enum
@@ -91,9 +92,15 @@ class Camera:
         self.width = width
         self.height = height
         self.smoothness = 0.15
+        self.shake_intensity = 0
+        self.shake_timer = 0
 
     def apply(self, entity):
-        return entity.rect.move(self.camera.topleft)
+        offset = self.camera.topleft
+        if self.shake_timer > 0:
+            offset = (offset[0] + random.randint(-self.shake_intensity, self.shake_intensity),
+                      offset[1] + random.randint(-self.shake_intensity, self.shake_intensity))
+        return entity.rect.move(offset)
 
     def update(self, target):
 
@@ -105,3 +112,10 @@ class Camera:
 
         self.camera.x += (x - self.camera.x) * self.smoothness
         self.camera.y += (y - self.camera.y) * self.smoothness
+
+        if self.shake_timer > 0:
+            self.shake_timer -= 1
+
+    def shake(self, intensity, duration):
+        self.shake_intensity = intensity
+        self.shake_timer = duration
