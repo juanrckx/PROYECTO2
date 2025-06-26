@@ -8,9 +8,11 @@ from boss import boss_debug
 
 class Player:
     def __init__(self, x, y, lives, speed, color, bomb_capacity, character_type, game):
-        self.rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+        current_level = game.levels[game.current_level_index]
+        spawn_x, spawn_y = current_level.player_spawn if hasattr(current_level, 'player_spawn') else (x, y)
+        self.rect = pygame.Rect(spawn_x * TILE_SIZE, spawn_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
         self.hitbox = pygame.Rect(
-            x * TILE_SIZE + 5, y * TILE_SIZE + 5,
+            spawn_x * TILE_SIZE + 5, spawn_y * TILE_SIZE + 5,
             TILE_SIZE - 10, TILE_SIZE - 10
         )
         self.lives = lives
@@ -62,6 +64,8 @@ class Player:
         self.was_phasing = None
         self.facing = "down"
         self.load_character_animations(character_type)
+
+
 
     def load_character_animations(self, character_type):
         """Carga animaciones con verificación de errores robusta"""
@@ -239,7 +243,7 @@ class Player:
 
 
 
-    def move(self, dx, dy, game_map, current_level, camera=None):
+    def move(self, dx, dy, game_map, current_level):
         if hasattr(self, 'controls_inverted') and self.controls_inverted:
             dx, dy = -dx, -dy
             boss_debug(f"Controles invertidos aplicados. Input: ({dx}, {dy})")
@@ -305,9 +309,19 @@ class Player:
             self.hitbox.x = self.rect.x + 5
             self.hitbox.y = self.rect.y + 5
 
-            # Actualizar cámara si estamos en el nivel del boss
-            if camera and current_level.difficulty == Difficulty.FINAL_BOSS:
-                camera.update(self)
+            if current_level.difficulty == Difficulty.TRANSITION_ROOM:
+                # Verificar recolección de llave física
+                if (current_level.key and not current_level.key.collected and
+                        self.hitbox.colliderect(current_level.key.rect)):
+                    current_level.key.collected = True
+                    self.key_collected = True  # Marcar como obtenida
+
+                # La puerta técnicamente siempre está abierta (self.door.open = True)
+                # pero verificamos que tenga la llave para poder usarla
+                if (self.key_collected and
+                        self.hitbox.colliderect(current_level.door.rect)):
+                    current_level.door.open = True  # Redundante por claridad
+                    # Lógica para cambiar de nivel [...]
 
             # Recolección de powerups
             for powerup in current_level.powerups[:]:
@@ -317,13 +331,6 @@ class Player:
 
             # Actualización de animación
             self.update_animation()
-
-            # Debug de posición (opcional)
-
-        print(f"Posición actual: ({self.rect.x}, {self.rect.y})")
-        print(f"Tile actual: ({self.rect.x // TILE_SIZE}, {self.rect.y // TILE_SIZE})")
-        if camera:
-            print(f"Offset cámara: ({camera.camera.x}, {camera.camera.y})")
 
 
 
@@ -433,6 +440,7 @@ class Player:
             return
 
         try:
+            draw_rect = self.rect
             # Para walk: frame_index entero (0-1-2)
             if self.current_animation == "walk":
                 frame_index = int(self.animation_frame) % 3
@@ -441,7 +449,7 @@ class Player:
                 frame_index = int(self.animation_frame) % len(self.animations["idle"][self.facing])
 
             current_frame = self.animations[self.current_animation][self.facing][frame_index]
-            surface.blit(current_frame, self.rect)
+            surface.blit(current_frame, draw_rect)
 
 
 

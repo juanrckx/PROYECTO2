@@ -3,7 +3,8 @@ import math
 import pygame
 
 from boss import Boss
-from utils import RED, WIDTH, HEIGHT
+from utils import RED, WIDTH, HEIGHT, Difficulty
+
 
 class Weapon:
     def __init__(self, owner):
@@ -18,13 +19,9 @@ class Weapon:
     def apply_damage_boost(self, amount):
         self.damage += self.base_damage + amount
 
-    def shoot(self, direction, camera=None):
+    def shoot(self, direction):
         if self.cooldown <= 0 and len(self.bullets) < self.max_bullets:
-            if camera:
-                screen_pos = camera.apply(self.owner.rect.center)
-                x, y = screen_pos.centerx, screen_pos.centery
-            else:
-                x, y = self.owner.rect.centerx, self.owner.rect.centery
+            x, y = self.owner.rect.centerx, self.owner.rect.centery
 
             if self.owner.item_effects["shotgun"]:
                 self._shotgun_shot(direction, x, y)
@@ -136,7 +133,7 @@ class Bullet:
 
         for enemy in current_level.enemies[:]:
             if enemy != "dead" and self.rect.colliderect(enemy.rect):
-                if isinstance(enemy, Boss):
+                if Difficulty.FINAL_BOSS:
                     enemy.boss_take_damage(self.damage)
                 else:
                     enemy.enemy_take_damage(self.damage)
@@ -196,6 +193,7 @@ class Bullet:
             self.dy /= norm
 
     def draw(self, surface):
+
         if self.homing:
             # Dibuja un aura pulsante
             alpha = 100 + int(100 * math.sin(pygame.time.get_ticks() * 0.01))

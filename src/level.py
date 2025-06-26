@@ -35,9 +35,17 @@ class Level:
         self.map = []
         self.enemies = []
         self.powerups = []
+        self.player_spawn = (1, 1)
 
-        if self.difficulty == Difficulty.FINAL_BOSS:
+
+
+
+        if self.difficulty == Difficulty.TRANSITION_ROOM:
+            self._generate_transition_room()
+
+        elif self.difficulty == Difficulty.FINAL_BOSS:
             self._generate_boss_arena()
+
         else:
             self.generate_map()
             self.generate_door()
@@ -75,193 +83,62 @@ class Level:
         self.ensure_door_access()
         #self.would_trap_player(10, 10, safe_zone)
 
+    def _generate_transition_room(self):
+        """Genera una sala del tamaño normal (20x15) con características especiales"""
+        # Generar mapa básico como un nivel normal
+        width, height = 20, 15
+        for x in range(width):
+            for y in range(height):
+                if x in (0, width - 1) or y in (0, height - 1):
+                    self.map.append(Block(x, y, destructible=False))
+
+        # Posicionar puerta en el centro de la pared derecha (siempre abierta)
+        door_x, door_y = width - 1, height // 2
+        self.map = [b for b in self.map if not (b.rect.x == door_x * TILE_SIZE and b.rect.y == door_y * TILE_SIZE)]
+        self.door = Door(door_x, door_y)
+        self.door.open = True  # Puerta siempre abierta
+
+        self.key = None
+
+        # Generar powerups especiales (solo vida y bombas)
+        powerup_positions = [
+            (width // 3, height // 3),
+            (2 * width // 3, height // 3),
+            (width // 3, 2 * height // 3),
+            (2 * width // 3, 2 * height // 3)
+        ]
+
+        for x, y in powerup_positions:
+            powerup = Powerup(x * TILE_SIZE, y * TILE_SIZE)
+            # Forzar tipo de powerup (50% vida, 50% bombas)
+            powerup.type = random.choice([PowerupType.EXTRA_LIFE, PowerupType.EXTRA_BOMB])
+            self.powerups.append(powerup)
+
+        # Spawn del jugador cerca de la pared izquierda
+        self.player_spawn = (2, height // 2)
+
     def _generate_boss_arena(self):
         # En level.py, modifica _generate_boss_arena
         """Generación corregida de la arena con sala de spawn y pasillo"""
         self.map = []
         self.enemies = []
-        self.boss_activated = False
+        width, height = 20, 15
 
-        # 1. Sala de spawn (5x5 tiles)
-        SPAWN_X, SPAWN_Y = 3, 5  # Posición en tiles
-        SPAWN_SIZE = 5
+        # Paredes exteriores
+        for x in range(width):
+            for y in range(height):
+                if x in (0, width - 1) or y in (0, height - 1):
+                    self.map.append(Block(x, y, destructible=False))
 
-        # Crear paredes exteriores de la sala
-        for x in range(SPAWN_SIZE):
-            for y in range(SPAWN_SIZE):
-                # Solo crear bloques en los bordes
-                if (x in (0, SPAWN_SIZE-1)) or (y in (0, SPAWN_SIZE-1)):
-                    if not (x == SPAWN_SIZE - 1 and y == SPAWN_SIZE // 2):
-                        self.map.append(Block(SPAWN_X + x, SPAWN_Y + y, destructible=False))
+        # Posicionar al jefe en el centro
+        boss_x, boss_y = (width // 2) - 1, (height // 2) - 1
 
-        # 2. Pasillo (3x1 tiles)
-        HALLWAY_LENGTH = 3
-        for i in range(1, HALLWAY_LENGTH + 1):
-            self.map.append(Block(SPAWN_X + SPAWN_SIZE - 1 + i, SPAWN_Y + 1 + SPAWN_SIZE//2, destructible=False))
-            self.map.append(Block(SPAWN_X + SPAWN_SIZE - 1 + i, SPAWN_Y - 1 + SPAWN_SIZE//2, destructible=False))
-
-        # 3. Arena principal (20x15 tiles)
-        ARENA_OFFSET_X = SPAWN_X + SPAWN_SIZE + HALLWAY_LENGTH
-        ARENA_OFFSET_Y = SPAWN_Y
-
-        # Crear bordes de la arena
-        for x in range(20):
-            for y in range(15):
-                if x in (0, 19) or y in (0, 14):
-                    if not (x == SPAWN_SIZE - 5 and y == SPAWN_SIZE // 2):
-                        self.map.append(Block(ARENA_OFFSET_X + x, ARENA_OFFSET_Y + y, destructible=False))
-
-        # 4. Bloque de entrada (se destruirá cuando el jugador entre)
-        self.entrance_block = Block(ARENA_OFFSET_X, ARENA_OFFSET_Y + 7, destructible=False)
-        self.entrance_block.destroyed = True
-
-        # 5. Posicionar al jefe en el centro de la arena
-        boss_x = (ARENA_OFFSET_X + 10) * TILE_SIZE
-        boss_y = (ARENA_OFFSET_Y + 7) * TILE_SIZE
-        self.spawn_boss(boss_x, boss_y)
-
-        # 6. Posición de spawn del jugador (centro de la sala de spawn)
-        self.activation_rect = pygame.Rect(
-            (ARENA_OFFSET_X - 1) * TILE_SIZE,
-            (ARENA_OFFSET_Y + 7) * TILE_SIZE,
-            TILE_SIZE * 2,
-            TILE_SIZE * 2
-        )
-
-    def check_player_entrance(self, player):
-        if self.boss_activated:
-            return
-
-        if player.hitbox.colliderect(self.activation_rect):
-            self.entrance_block.destroyed = False
-            self.map.append(self.entrance_block)
-            self.boss_activated = True
-
-            for enemy in self.enemies:
-                if isinstance(enemy, Boss):
-                    enemy.state = "active"
-                    enemy.phase = 1
-
-    def debug_draw_map(self, surface, camera=None):
-        """Dibuja un mapa de debug con colores para diferentes elementos"""
-        # Colores para debug
-        COLORS = {
-            'wall': (100, 100, 100),  # Gris - Bloques indestructibles
-            'spawn_room': (50, 50, 150),  # Azul oscuro - Sala de spawn
-            'hallway': (70, 70, 200),  # Azul - Pasillo
-            'arena': (150, 50, 50),  # Rojo oscuro - Arena
-            'entrance': (0, 255, 0),  # Verde - Entrada (verde si está abierta)
-            'player_spawn': (0, 255, 255),  # Cian - Posición de spawn del jugador
-            'boss_spawn': (255, 0, 255)  # Magenta - Posición del jefe
-        }
-
-        # Dibujar todos los bloques
-        for block in self.map:
-            if camera:
-                rect = block.rect.move(camera.camera.topleft)
-            else:
-                rect = block.rect
-
-            # Determinar el color según la ubicación del bloque
-            if not block.destructible:
-                # Identificar en qué área está el bloque
-                if hasattr(self, 'player_spawn_x') and hasattr(self, 'player_spawn_y'):
-                    spawn_room_x = self.player_spawn_x // TILE_SIZE - 1
-                    spawn_room_y = self.player_spawn_y // TILE_SIZE - 1
-
-                    # Sala de spawn (5x5)
-                    if (spawn_room_x <= block.rect.x // TILE_SIZE < spawn_room_x + 5 and
-                            spawn_room_y <= block.rect.y // TILE_SIZE < spawn_room_y + 5):
-                        color = COLORS['spawn_room']
-
-                    # Pasillo (3 bloques de largo)
-                    elif (spawn_room_x + 5 <= block.rect.x // TILE_SIZE < spawn_room_x + 8 and
-                          block.rect.y // TILE_SIZE == spawn_room_y + 2):
-                        color = COLORS['hallway']
-
-                    # Arena
-                    else:
-                        color = COLORS['arena']
-                else:
-                    color = COLORS['wall']
-
-                pygame.draw.rect(surface, color, rect)
-
-        # Dibujar entrada
-        if hasattr(self, 'entrance_block'):
-            if camera:
-                entrance_rect = self.entrance_block.rect.move(camera.camera.topleft)
-            else:
-                entrance_rect = self.entrance_block.rect
-
-            entrance_color = COLORS['entrance'] if self.entrance_block.destroyed else (255, 0, 0)
-            pygame.draw.rect(surface, entrance_color, entrance_rect, 2)  # Borde grueso
-
-        # Dibujar posición de spawn del jugador
-        if hasattr(self, 'player_spawn_x') and hasattr(self, 'player_spawn_y'):
-            player_spawn_rect = pygame.Rect(
-                self.player_spawn_x - TILE_SIZE // 2,
-                self.player_spawn_y - TILE_SIZE // 2,
-                TILE_SIZE, TILE_SIZE
-            )
-            if camera:
-                player_spawn_rect = player_spawn_rect.move(camera.camera.topleft)
-
-            pygame.draw.rect(surface, COLORS['player_spawn'], player_spawn_rect, 2)
-
-        # Dibujar posición del jefe
-        for enemy in self.enemies:
-            if isinstance(enemy, Boss):
-                boss_rect = pygame.Rect(
-                    enemy.rect.x - enemy.rect.width // 2,
-                    enemy.rect.y - enemy.rect.height // 2,
-                    enemy.rect.width, enemy.rect.height
-                )
-                if camera:
-                    boss_rect = boss_rect.move(camera.camera.topleft)
-
-                pygame.draw.rect(surface, COLORS['boss_spawn'], boss_rect, 2)
-
-
-
-
-    def spawn_boss(self, boss_x, boss_y):
-        self.map = [b for b in self.map if not (b.rect.x == boss_x * TILE_SIZE and b.rect.y == boss_y * TILE_SIZE)]
-
-        for dx in [-1, 0, 1]:
-            for dy in [-1, 0, 1]:
-                if dx == 0 and dy == 0:
-                    continue
-                clear_x, clear_y = boss_x + dx, boss_y + dy
-                if 0 <= clear_x < 20 and 0 <= clear_y < 15:
-                    self.map = [b for b in self.map if
-                                not (b.rect.x == clear_x * TILE_SIZE and b.rect.y == clear_y * TILE_SIZE)]
-
+        # Posición de spawn del jugador (esquina superior izquierda)
+        self.player_spawn = ((width // 2) - 1, (height // 2) - 1)
         boss = Boss(boss_x * TILE_SIZE, boss_y * TILE_SIZE)
         boss.set_level(self)
         self.enemies.append(boss)
 
-    def check_player_entrance(self, player):
-        """Verifica si el jugador entra a la arena y cierra la entrada"""
-        if not hasattr(self, 'entrance_block') or not self.entrance_block.destroyed:
-            return
-
-        # Área de activación (último tile del pasillo)
-        entrance_rect = pygame.Rect(
-            self.entrance_block.rect.x - TILE_SIZE,
-            self.entrance_block.rect.y - TILE_SIZE,
-            TILE_SIZE * 2,
-            TILE_SIZE * 2
-        )
-
-        if player.hitbox.colliderect(entrance_rect):
-            # Cerrar la entrada
-            self.entrance_block.destroyed = False
-
-            # Activar el boss
-            for enemy in self.enemies:
-                if isinstance(enemy, Boss):
-                    enemy.state = "active"
 
 
     def ensure_door_access(self):

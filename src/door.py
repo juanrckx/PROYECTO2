@@ -1,5 +1,5 @@
 import pygame
-from utils import GREEN, RED, TILE_SIZE
+from utils import GREEN, RED, TILE_SIZE, WHITE, DEFAULT_FONT
 
 
 class Door:
@@ -10,6 +10,8 @@ class Door:
     def draw(self, surface):
         color = GREEN if self.open else RED
         pygame.draw.rect(surface, color, self.rect)
+        text = DEFAULT_FONT.render("→", True, WHITE)
+        surface.blit(text, (self.rect.x + 10, self.rect.y + 5))
 
 
 class Key:

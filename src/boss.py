@@ -18,34 +18,41 @@ def boss_debug(message, condition=True):
 
 class Boss:
     def __init__(self, x, y):
-        self.rect: pygame.Rect = pygame.Rect(x, y, 128, 128)
+        self.rect = pygame.Rect(x, y, 128, 128)
         self.health = 200
         self.max_health = 200
-        self.base_speed = 3.0
-        self.target_speed = 3.0
+        self.base_speed = 2.0
         self.current_speed = 0.0
-        self.speed_transition = 0.15
         self.color = (200, 0, 0)
-        self.attacks = [self._random_bombs, self._invert_controls, self._no_bombs_spell,
-                        self._super_bombs, self._charge_attack]
-        self.current_attack = None
-        self.attack_cooldown = 0
-        self.boss_bombs = []
-        self.is_exhausted = False
-        self.exhaustion_timer = 0
-        self.controls_inverted = False
-        self.controls_inverted_timer = 0
+
+        # Estados y comportamientos
+        self.state = "inactive"
         self.phase = 1
-        self.state = "moving"
-        self.last_attack_time = 0
-        self.attack_delay = 5000
+        self.attacks = [
+            self._random_bombs,
+            self._charge_attack,
+            self._super_bombs,
+            self._invert_controls,
+            self._no_bombs_spell
+        ]
+        self.attack_weights = [0.3, 0.3, 0.2, 0.1, 0.1]  # Probabilidades
+
+        # Temporizadores
+        self.initial_cooldown = 180  # 3 segundos
+        self.attack_cooldown = 0
+        self.stun_timer = 0
+        self.charge_timer = 0
+        self.ability_duration = 0
+
+        # Ataque de carga
+        self.charge_direction = pygame.Vector2(0, 0)
+        self.charge_speed_multiplier = 3.0
+        self.is_charging = False
+
+        # Efectos especiales
+        self.controls_inverted = False
+        self.bombs_disabled = False
         self.current_level = None
-        self.last_path_update = 0
-        self.last_direction = (0, 0)
-        self.exhausted_speed = 0.5
-        self.charge_multiplier = 5
-        self.recovery_duration = 1000
-        self.phase_transition_complete = False
 
 
     def set_level(self, level):
@@ -78,6 +85,9 @@ class Boss:
 
             # Actualización de bombas
         self.update_bombs(player, self.current_level)
+
+    def _activate_boss(self):
+        self.color = (255,0, 0)
 
 
     def _check_wall_collision(self, rect):
@@ -365,24 +375,6 @@ class Boss:
                 current_level.check_bomb_collisions(bomb, player)
                 self.boss_bombs.remove(bomb)
 
-    def debug_draw(self, surface, camera=None):
-        """Dibuja información de debug para el jefe"""
-        if camera:
-            render_pos = self.rect.move(camera.camera.topleft)
-        else:
-            render_pos = self.rect
-
-        # Dibujar área de colisión
-        pygame.draw.rect(surface, (255, 0, 0, 128), render_pos, 1)
-
-        # Dibujar radio de visión/ataque
-        pygame.draw.circle(surface, (255, 165, 0, 50), render_pos.center, 200, 1)
-
-        # Dibujar estado actual
-        state_text = f"Estado: {self.state}"
-        font = pygame.font.SysFont(None, 20)
-        text_surface = font.render(state_text, True, (255, 255, 255))
-        surface.blit(text_surface, (render_pos.x, render_pos.y - 20))
 
     def draw(self, surface):
         """Dibuja al jefe con indicadores de estado"""

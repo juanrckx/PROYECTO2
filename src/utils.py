@@ -55,7 +55,8 @@ class Difficulty(Enum):
     EASY = 0
     MEDIUM = 1
     HARD = 2
-    FINAL_BOSS = 3
+    TRANSITION_ROOM = 3
+    FINAL_BOSS = 4
 
 
 class PowerupType(Enum):
@@ -85,37 +86,3 @@ class ScrollingBackground:
     def draw(self, surface):
         surface.blit(self.image, (self.scroll, 0))
         surface.blit(self.image, (self.scroll + self.width, 0))
-
-class Camera:
-    def __init__(self, width, height):
-        self.camera = pygame.Rect(0, 0, width, height)
-        self.width = width
-        self.height = height
-        self.smoothness = 0.15
-        self.shake_intensity = 0
-        self.shake_timer = 0
-
-    def apply(self, entity):
-        offset = self.camera.topleft
-        if self.shake_timer > 0:
-            offset = (offset[0] + random.randint(-self.shake_intensity, self.shake_intensity),
-                      offset[1] + random.randint(-self.shake_intensity, self.shake_intensity))
-        return entity.rect.move(offset)
-
-    def update(self, target):
-
-        x = -target.rect.centerx + self.width // 2
-        y = -target.rect.centery + self.width // 2
-
-        x = min(0, max(-(MAP_WIDTH - self.width), x))
-        y = min(0, max(-(MAP_HEIGHT - self.height), y))
-
-        self.camera.x += (x - self.camera.x) * self.smoothness
-        self.camera.y += (y - self.camera.y) * self.smoothness
-
-        if self.shake_timer > 0:
-            self.shake_timer -= 1
-
-    def shake(self, intensity, duration):
-        self.shake_intensity = intensity
-        self.shake_timer = duration

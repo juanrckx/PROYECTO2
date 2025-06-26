@@ -9,7 +9,7 @@ from level import Level
 from player import Player
 from powerups import Powerup
 from utils import GameState, Difficulty, GRAY, GREEN, RED, BLUE, BLACK, HEIGHT, WIDTH, TILE_SIZE, FPS, WHITE, \
-    ScrollingBackground, Camera, MAP_WIDTH, MAP_HEIGHT
+    ScrollingBackground, MAP_WIDTH, MAP_HEIGHT
 
 '''
 #TODO
@@ -51,6 +51,7 @@ ARREGLAR BOMBAS
 ARREGLAR ENEMIGOS QUE NO SE ELIMINAN DEL MAPA
 IMPLEMENTAR A CLERIC
 AÑADIR OMITIR A ITEM
+REVISAR ITEMS Y SUMAS
 
 
 
@@ -82,14 +83,14 @@ class Game:
             Level(1, Difficulty.EASY, self),
             Level(2, Difficulty.MEDIUM, self),
             Level(3, Difficulty.HARD, self),
-            Level(4, Difficulty.FINAL_BOSS, self)
+            Level(4, Difficulty.TRANSITION_ROOM, self),
+            Level(5, Difficulty.FINAL_BOSS, self)
         ]
         self.current_level_index = 0
         self.player = None
         self.score = 0
         self.start_time = 0
         self.background = ScrollingBackground("assets/textures/bg/background.png")
-        self.camera = Camera(WIDTH, HEIGHT)
 
         # Botones del menú
         self.start_button = Button(
@@ -138,23 +139,15 @@ class Game:
         self.current_level_index = 3
         current_level = self.levels[self.current_level_index]
 
-
-        if self.current_level_index >= 3:
-            spawn_x = 200 // TILE_SIZE
-            spawn_y = 280 // TILE_SIZE
-        else:
-            spawn_x = 1
-            spawn_y = 1
-
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(spawn_x, spawn_y, 99, 4, BLUE, 51, 0,  self )
+            self.player = Player(1, 1, 99, 4, BLUE, 51, 0,  self )
         elif character_type == 1:  # Tanky
-            self.player = Player(spawn_x, spawn_y, 5, 2, GREEN, 3, 1,  self)
+            self.player = Player(1, 1, 5, 2, GREEN, 3, 1,  self)
         elif character_type == 2:  # Pyro
-            self.player = Player(spawn_x, spawn_y, 2, 5, RED, 8, 2,  self)
+            self.player = Player(1, 1, 2, 5, RED, 8, 2,  self)
         elif character_type == 3: #Cleric
-            self.player = Player(spawn_x, spawn_y, 2, 4, WHITE, 4, 3,  self)
+            self.player = Player(1, 1, 2, 4, WHITE, 4, 3,  self)
 
 
 
@@ -203,9 +196,12 @@ class Game:
             self)
 
         if self.current_level_index == 3:  # Índice del nivel del jefe
+            self.player.can_place_bombs = False
+            self.player.weapon = False
+            pygame.time.set_timer(pygame.USEREVENT + 40, 3000)
             boss_count = sum(1 for e in current_level.enemies if isinstance(e, Boss))
             if boss_count == 0:
-                boss = Boss(8 * TILE_SIZE, 7 * TILE_SIZE)
+                boss = Boss((20 // 2) - 1, (15 // 2) - 1)
                 boss.set_level(current_level)
                 current_level.enemies.append(boss)
             elif boss_count > 1:
@@ -332,6 +328,10 @@ class Game:
             if event.type == pygame.USEREVENT + 30:
                 if self.player:
                     self.player.controls_inverted = False
+            if event.type == pygame.USEREVENT + 40:  # Fin del cooldown inicial
+                self.player.can_place_bombs = True
+                self.player.weapon = True
+                self.levels[self.current_level_index].enemies[0].can_attack = True
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_click = True
@@ -408,32 +408,6 @@ class Game:
 
         return True
 
-    def draw_debug_info(self, surface):
-        """Dibuja información de debug en la pantalla"""
-        if not hasattr(self, 'player') or not hasattr(self, 'current_level_index'):
-            return
-
-        current_level = self.levels[self.current_level_index]
-        debug_info = [
-            f"Nivel: {self.current_level_index + 1}",
-            f"Pos Jugador: ({self.player.rect.x}, {self.player.rect.y})",
-            f"Pos Cámara: ({self.camera.camera.x}, {self.camera.camera.y})",
-            f"Entrada abierta: {'Sí' if hasattr(current_level, 'entrance_block') and current_level.entrance_block.destroyed else 'No'}"
-        ]
-
-        if current_level.difficulty == Difficulty.FINAL_BOSS:
-            boss = next((e for e in current_level.enemies if isinstance(e, Boss)), None)
-            if boss:
-                debug_info.extend([
-                    f"Jefe Estado: {boss.state}",
-                    f"Jefe Vida: {boss.health}/{boss.max_health}",
-                    f"Jefe Pos: ({boss.rect.x}, {boss.rect.y})"
-                ])
-
-        font = pygame.font.SysFont(None, 24)
-        for i, info in enumerate(debug_info):
-            text = font.render(info, True, (255, 255, 255))
-            surface.blit(text, (10, 10 + i * 25))
 
     def update(self):
         if self.state != GameState.GAME or not self.player:
@@ -459,7 +433,7 @@ class Game:
         if keys[pygame.K_a]: dx = -1
         if keys[pygame.K_d]: dx = 1
 
-        self.player.move(dx, dy, current_level.map, current_level, self.camera)
+        self.player.move(dx, dy, current_level.map, current_level)
 
         for enemy in current_level.enemies[:]:
             if isinstance(enemy, Boss):  # Comportamiento especial para el jefe
@@ -496,7 +470,6 @@ class Game:
                 return
         if current_level.difficulty == Difficulty.FINAL_BOSS:
             current_level.update_boss_powerups()
-            current_level.check_player_entrance(self.player)
 
             for enemy in current_level.enemies:
                 if isinstance(enemy, Boss):
@@ -505,7 +478,7 @@ class Game:
                             current_level.check_bomb_collisions(bomb, self.player)
                             enemy.boss_bombs.remove(bomb)
 
-        if current_level.difficulty != Difficulty.FINAL_BOSS:
+        if current_level.difficulty != Difficulty.FINAL_BOSS and current_level.difficulty != Difficulty.TRANSITION_ROOM:
             if (hasattr(current_level, 'key') and
                     current_level.key.revealed and
                     not current_level.key.collected and
@@ -514,6 +487,8 @@ class Game:
                     current_level.key.collected = True
                     self.player.key_collected = True
                     current_level.open_door()
+        if current_level.difficulty == Difficulty.TRANSITION_ROOM:
+            current_level.open_door()
 
             if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
                 self.between_levels()
@@ -578,14 +553,8 @@ class Game:
         # Dibujar mapa
         for block in current_level.map:
             if not block.destroyed:
-                if self.current_level_index == 3:
-                    adjusted_rect = self.camera.apply(block)
-                    pygame.draw.rect(window, (100, 100, 100), adjusted_rect)
-                else:
-                    block.draw(window)
+                block.draw(window)
 
-        player_rect = self.camera.apply(self.player)
-        pygame.draw.rect(window, self.player.color, player_rect)
 
         # Dibujar puerta y llave
         if current_level.difficulty != Difficulty.FINAL_BOSS:
@@ -602,12 +571,11 @@ class Game:
             bomb.draw(window)
 
         for powerup in current_level.powerups:
-            powerup.draw(window, self.camera)
+            powerup.draw(window)
 
 
-        # Dibujar jugador
+
         self.player.draw(window)
-        self.draw_debug_info(window)
         # Dibujar HUD
         lives_text = DEFAULT_FONT.render(f"Vidas: {self.player.lives}", True, WHITE)
         score_text = DEFAULT_FONT.render(f"Puntos: {self.score}", True, WHITE)
