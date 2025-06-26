@@ -108,7 +108,8 @@ class Level:
         for x in range(20):
             for y in range(15):
                 if x in (0, 19) or y in (0, 14):
-                    self.map.append(Block(ARENA_OFFSET_X + x, ARENA_OFFSET_Y + y, destructible=False))
+                    if not (x == SPAWN_SIZE - 5 and y == SPAWN_SIZE // 2):
+                        self.map.append(Block(ARENA_OFFSET_X + x, ARENA_OFFSET_Y + y, destructible=False))
 
         # 4. Bloque de entrada (se destruirá cuando el jugador entre)
         self.entrance_block = Block(ARENA_OFFSET_X, ARENA_OFFSET_Y + 7, destructible=False)
