@@ -135,13 +135,13 @@ class Game:
         self.frozen_enemies = False  # Para control global
 
     def start_game(self, character_type):
-        self.current_level_index = 2
+        self.current_level_index = 3
         current_level = self.levels[self.current_level_index]
 
 
         if self.current_level_index >= 3:
-            spawn_x = 120 // TILE_SIZE
-            spawn_y = 200 // TILE_SIZE
+            spawn_x = 200 // TILE_SIZE
+            spawn_y = 280 // TILE_SIZE
         else:
             spawn_x = 1
             spawn_y = 1

@@ -76,41 +76,49 @@ class Level:
         #self.would_trap_player(10, 10, safe_zone)
 
     def _generate_boss_arena(self):
-        """Generación corregida de la arena"""
+        # En level.py, modifica _generate_boss_arena
+        """Generación corregida de la arena con sala de spawn y pasillo"""
         self.map = []
         self.enemies = []
 
-        # Dimensiones en tiles
-        ARENA_W, ARENA_H = 20, 15
+        # 1. Sala de spawn (5x5 tiles)
+        SPAWN_X, SPAWN_Y = 3, 5  # Posición en tiles
         SPAWN_SIZE = 5
 
-        # 1. Sala de spawn (5x5) en posición visible (40-240px, 120-320px)
-        SPAWN_X, SPAWN_Y = 1, 3  # En tiles
+        # Crear paredes exteriores de la sala
         for x in range(SPAWN_SIZE):
             for y in range(SPAWN_SIZE):
-                if not (x == SPAWN_SIZE - 1 and y == SPAWN_SIZE // 2):  # Entrada
+                # Solo crear bloques en los bordes
+                if x in (0, SPAWN_SIZE-1) or y in (0, SPAWN_SIZE-1):
                     self.map.append(Block(SPAWN_X + x, SPAWN_Y + y, destructible=False))
 
-        # 2. Posición de spawn centrada
-        self.player_spawn_x = (SPAWN_X + SPAWN_SIZE // 2) * TILE_SIZE  # 120px
-        self.player_spawn_y = (SPAWN_Y + SPAWN_SIZE // 2) * TILE_SIZE  # 200px
+        # 2. Pasillo (3x1 tiles)
+        HALLWAY_LENGTH = 3
+        for i in range(1, HALLWAY_LENGTH+1):
+            self.map.append(Block(SPAWN_X + SPAWN_SIZE - 1 + i, SPAWN_Y + SPAWN_SIZE//2, destructible=False))
 
-        # 3. Arena principal (20x15) desplazada
-        ARENA_OFFSET_X, ARENA_OFFSET_Y = 8, 2  # En tiles (320px, 80px)
-        for x in range(ARENA_W):
-            for y in range(ARENA_H):
-                if x == 0 or x == ARENA_W - 1 or y == 0 or y == ARENA_H - 1:
+        # 3. Arena principal (20x15 tiles)
+        ARENA_OFFSET_X = SPAWN_X + SPAWN_SIZE + HALLWAY_LENGTH
+        ARENA_OFFSET_Y = SPAWN_Y
+
+        # Crear bordes de la arena
+        for x in range(20):
+            for y in range(15):
+                if x in (0, 19) or y in (0, 14):
                     self.map.append(Block(ARENA_OFFSET_X + x, ARENA_OFFSET_Y + y, destructible=False))
 
-        # 4. Posicionar al BOSS en el centro de la arena
-        boss_x = (ARENA_OFFSET_X + ARENA_W // 2) * TILE_SIZE
-        boss_y = (ARENA_OFFSET_Y + ARENA_H // 2) * TILE_SIZE
+        # 4. Bloque de entrada (se destruirá cuando el jugador entre)
+        self.entrance_block = Block(ARENA_OFFSET_X, ARENA_OFFSET_Y + 7, destructible=False)
+        self.map.append(self.entrance_block)
+
+        # 5. Posicionar al jefe en el centro de la arena
+        boss_x = (ARENA_OFFSET_X + 10) * TILE_SIZE
+        boss_y = (ARENA_OFFSET_Y + 7) * TILE_SIZE
         self.spawn_boss(boss_x, boss_y)
 
-        # 5. Bloque de entrada
-        self.entrance_block = Block(ARENA_OFFSET_X, ARENA_OFFSET_Y + ARENA_H // 2, destructible=False)
-        self.entrance_block.destroyed = True
-        self.map.append(self.entrance_block)
+        # 6. Posición de spawn del jugador (centro de la sala de spawn)
+        self.player_spawn_x = (SPAWN_X + SPAWN_SIZE//2) * TILE_SIZE
+        self.player_spawn_y = (SPAWN_Y + SPAWN_SIZE//2) * TILE_SIZE
 
     def debug_draw_map(self, surface, camera=None):
         """Dibuja un mapa de debug con colores para diferentes elementos"""
