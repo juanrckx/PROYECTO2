@@ -94,8 +94,9 @@ class Level:
 
         # 2. Pasillo (3x1 tiles)
         HALLWAY_LENGTH = 3
-        for i in range(1, HALLWAY_LENGTH+1):
-            self.map.append(Block(SPAWN_X + SPAWN_SIZE - 1 + i, SPAWN_Y + SPAWN_SIZE//2, destructible=False))
+        for i in range(1, HALLWAY_LENGTH + 1):
+            self.map.append(Block(SPAWN_X + SPAWN_SIZE - 1 + i, SPAWN_Y + 1 + SPAWN_SIZE//2, destructible=False))
+            self.map.append(Block(SPAWN_X + SPAWN_SIZE - 1 + i, SPAWN_Y - 1 + SPAWN_SIZE//2, destructible=False))
 
         # 3. Arena principal (20x15 tiles)
         ARENA_OFFSET_X = SPAWN_X + SPAWN_SIZE + HALLWAY_LENGTH
