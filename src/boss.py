@@ -1,19 +1,9 @@
-
 import pygame
 import random
-from utils import TILE_SIZE, WIDTH, HEIGHT
+import math
+
 from bomb import Bomb
-
-
-DEBUG_MODE = True  # Cambiar a False para desactivar los debugs
-BOSS_DEBUG_LOG = "boss_debug.log"
-
-def boss_debug(message, condition=True):
-    if DEBUG_MODE and condition:
-        print(f"[BOSS DEBUG] {message}")
-        with open(BOSS_DEBUG_LOG, "a") as f:
-            f.write(f"{message}\n")
-
+from utils import TILE_SIZE, WIDTH, HEIGHT
 
 
 class Boss:
@@ -43,6 +33,7 @@ class Boss:
         self.stun_timer = 0
         self.charge_timer = 0
         self.ability_duration = 0
+        self.boss_bombs = []
 
         # Ataque de carga
         self.charge_direction = pygame.Vector2(0, 0)
@@ -53,343 +44,247 @@ class Boss:
         self.controls_inverted = False
         self.bombs_disabled = False
         self.current_level = None
-
+        self.debug_log = []
 
     def set_level(self, level):
         self.current_level = level
 
     def update(self, player, arena_blocks):
-        current_time = pygame.time.get_ticks()
-
-        if self.state == "inactive":
+        # Cooldown inicial
+        if self.initial_cooldown > 0:
+            self.initial_cooldown -= 1
+            if self.initial_cooldown == 0:
+                self.state = "active"
+                self._activate_boss()
             return
 
-        self._update_exhaustion()
-        self._update_speed()
-        self._handle_attacks(player, arena_blocks)
+        # Actualizar efectos temporales
+        self._update_effects(player)
 
-        if self.phase == 1:
-            # Ataques cada 5 segundos
-            if current_time - self.last_attack_time > 7500:
-                self.last_attack_time = current_time
-                attack = random.choice([self._random_bombs, self._super_bombs, self._invert_controls])
-                attack(player, arena_blocks)
-        else:
-            self._phase_two_behavior(player,arena_blocks)
-
-        if (self.controls_inverted and
-                current_time - self.controls_inverted_timer > 10000):
-            player.controls_inverted = False
-            self.controls_inverted = False
-
-
-            # Actualización de bombas
-        self.update_bombs(player, self.current_level)
-
-    def _activate_boss(self):
-        self.color = (255,0, 0)
-
-
-    def _check_wall_collision(self, rect):
-        """Verifica colisión con bordes y bloques indestructibles"""
-        # Verificar bordes de pantalla
-        if (rect.left < TILE_SIZE or rect.right > WIDTH - TILE_SIZE or
-                rect.top < TILE_SIZE or rect.bottom > HEIGHT - TILE_SIZE):
-            return True
-
-        # Verificar bloques indestructibles
-        if not hasattr(self, 'current_level') or not self.current_level:
-            return False
-
-        margin = 10  # Margen de tolerancia
-        test_rect = rect.inflate(-margin, -margin)
-
-        return any(
-            not block.destructible and
-            not block.destroyed and
-            test_rect.colliderect(block.rect)
-            for block in self.current_level.map
-        )
-
-    def _phase_two_behavior(self, player, arena_blocks):
-        """Comportamiento después del 50% de vida"""
-        # Destruir todos los bloques destructibles al entrar en fase 2
-        if not self.phase_transition_complete:
-            self._destroy_all_destructible_blocks()
-            self.phase_transition_complete = True
-            self.base_speed *= 1.5  # Aumentar velocidad
-
-        # Comportamiento agresivo
-        self.smart_move_towards(player)
-
-        # Ataques más frecuentes
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_attack_time > 3000:  # Cada 3 segundos
-            self.last_attack_time = current_time
-            self.current_attack = random.choice(self.attacks)
-            self.current_attack(player, arena_blocks)
-
-    def _destroy_destructible_blocks(self):
-        """Destruye bloques destructibles al azar"""
-        if not hasattr(self, 'current_level'):
+        # Comportamiento según estado
+        if self.state == "stunned":
+            self.stun_timer -= 1
+            if self.stun_timer <= 0:
+                self.state = "active"
             return
 
-        for block in self.current_level.map[:]:
-            if block.destructible and random.random() < 0.3:  # 30% de probabilidad por bloque
-                block.destroyed = True
-                self.current_level.map.remove(block)
-
-    def _destroy_all_destructible_blocks(self):
-        """Destruye todos los bloques destructibles"""
-        if not hasattr(self, 'current_level'):
+        if self.state == "charging":
+            self._update_charge()
             return
 
-        self.current_level.map = [b for b in self.current_level.map if not b.destructible]
-
-    def _update_exhaustion(self):
-        """Maneja el estado de agotamiento con transición suave"""
-        if self.is_exhausted:
-            recovery_progress = min(1.0, (pygame.time.get_ticks() - self.exhaustion_timer - 4000) / 1000)
-
-            if recovery_progress >= 1.0:
-                self.is_exhausted = False
-                boss_debug("Recuperación completa")
-            elif recovery_progress >= 0:
-                # Recuperación gradual durante el último segundo
-                speed_range = self.base_speed - self.exhausted_speed
-                self.target_speed = self.exhausted_speed + speed_range * recovery_progress
-        else:
-            self.target_speed = self.base_speed
-
-    def _handle_attacks(self, player, arena_blocks):
-        """Maneja la lógica de ataques"""
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_attack_time > self.attack_delay and not self.is_exhausted:
-            if self.phase == 2 and random.random() < 0.3 and self.health < self.max_health * 0.25:
-                self.current_attack = random.sample(self.attacks, 2)
-                for attack in self.current_attack:
-                    attack(player, arena_blocks)
-            else:
-                self.current_attack = random.choice(self.attacks)
-                self.current_attack(player, arena_blocks)
-
-            self.last_attack_time = current_time
-            self.attack_delay = random.randint(3000, 5000)
-
-    def _update_speed(self):
-        """Suaviza los cambios de velocidad"""
-        self.current_speed += (self.target_speed - self.current_speed) * self.speed_transition
-        self.current_speed = max(0.1, min(self.base_speed * 1.5, self.current_speed))
-
-
-    def _random_bombs(self, _, __):
-        boss_debug("ATAQUE: Bombas aleatorias (5 bombas)")
-        for _ in range(5):
-            bomb_x = random.randint(1, WIDTH // TILE_SIZE - 1) * TILE_SIZE
-            bomb_y = random.randint(1, HEIGHT // TILE_SIZE - 1) * TILE_SIZE
-            self.boss_bombs.append(Bomb(bomb_x * TILE_SIZE, bomb_y * TILE_SIZE, self, False, 2))
-
-    def _invert_controls(self, player, _):
-        boss_debug("ATAQUE: Inversión de controles (10 segundos)")
-        pygame.time.set_timer(pygame.USEREVENT + 30, 10000, True)  # USEREVENT + 30 para controles
-        player.controls_inverted = True
-
-        self.controls_inverted = True
-        self.controls_inverted_timer = pygame.time.get_ticks()
-        pygame.time.set_timer(pygame.USEREVENT + 30, 10000, 1)
-
-    def _no_bombs_spell(self, player, _):
-        if self.health < self.max_health // 2:
-            boss_debug("ATAQUE: Bloqueo de bombas (5 segundos)")
-            player.can_place_bombs = False
-            pygame.time.set_timer(pygame.USEREVENT + 20, 10000, True)
-
-
-
-    def _super_bombs(self, _, __):
-        boss_debug("ATAQUE: Super bombas (2 bombas de gran alcance)")
-        if self.health < self.max_health // 2:
-            for _ in range(2):
-                x = random.randint(1, WIDTH // TILE_SIZE - 1) * TILE_SIZE
-                y = random.randint(1, WIDTH // TILE_SIZE - 1) * TILE_SIZE
-                bomb = Bomb(x, y, self, True, 5)
-                bomb.rect.inflate_ip(20, 20)
-                self.boss_bombs.append(bomb)
-
-    def _charge_attack(self, player, _):
-        """Ataque de carga con transición suave"""
-        if self.health < self.max_health // 2:
-            # Pre-carga: aceleración gradual
-            for i in range(1, 6):
-                self.target_speed = self.base_speed * (self.charge_multiplier * (i / 5))
-                self._update_speed()
-                pygame.time.delay(30)
-
-            # Movimiento de carga
-            direction = pygame.Vector2(
-                player.rect.centerx - self.rect.centerx,
-                player.rect.centery - self.rect.centery
-            )
-            if direction.length() > 0:
-                direction = direction.normalize()
-
-            for _ in range(10):
-                self.rect.x += direction.x * self.current_speed / 2
-                self.rect.y += direction.y * self.current_speed / 2
-                pygame.time.delay(15)
-
-            # Postcarga: agotamiento
-            self.is_exhausted = True
-            self.exhaustion_timer = pygame.time.get_ticks()
-            self.target_speed = self.exhausted_speed
-
-    def move_towards_player(self, player):
-        """Movimiento directo hacia el jugador"""
-        direction = pygame.Vector2(
-            player.rect.centerx - self.rect.centerx,
-            player.rect.centery - self.rect.centery
-        )
-
-        if direction.length() > 0:
-            direction = direction.normalize()
-            self.last_direction = (direction.x, direction.y)
-
-            self.rect.x += direction.x * self.current_speed
-            self.rect.y += direction.y * self.current_speed
-
-        # Mantener dentro de límites
-        self.rect.clamp_ip(pygame.Rect(
-            TILE_SIZE, TILE_SIZE,
-            WIDTH - 2 * TILE_SIZE,
-            HEIGHT - 2 * TILE_SIZE
-        ))
-
-    def check_collision(self, rect):
-        if not hasattr(self, 'current_level') or not self.current_level:
-            return False
-
-        # Considerar el tamaño del jefe
-        margin = 10  # Margen de tolerancia
-        test_rect = rect.inflate(-margin, -margin)
-
-        return any(
-            not block.destructible and
-            test_rect.colliderect(block.rect)
-            for block in self.current_level.map
-            if not block.destroyed
-        )
-
-    def get_safe_directions(self, target_x, target_y):
-        """Versión más robusta que siempre encuentra alguna dirección"""
-        directions = []
-        test_distance = TILE_SIZE + 5  # Margen adicional
-
-        # Calculamos vector hacia el objetivo
-        dx_target = 1 if target_x > self.rect.centerx else -1
-        dy_target = 1 if target_y > self.rect.centery else -1
-
-        # Orden de prioridad de direcciones (8 direcciones)
-        direction_priority = [
-            (dx_target, dy_target),  # Diagonal hacia objetivo (máxima prioridad)
-            (dx_target, 0),  # Horizontal hacia objetivo
-            (0, dy_target),  # Vertical hacia objetivo
-            (1, 0), (-1, 0), (0, 1), (0, -1),  # Cardinales
-            (1, 1), (1, -1), (-1, 1), (-1, -1)  # Diagonales
-        ]
-
-        # Verificar colisiones
-        for dx, dy in direction_priority:
-            test_rect = self.rect.copy()
-            test_rect.x += dx * test_distance
-            test_rect.y += dy * test_distance
-
-            if not self.check_collision(test_rect):
-                directions.append((dx, dy))
-
-        # Fallback: Si no hay direcciones, intentar movimientos mínimos
-        if not directions:
-            for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-                test_rect = self.rect.copy()
-                test_rect.x += dx * (test_distance // 2)  # Medio tile
-                test_rect.y += dy * (test_distance // 2)
-
-                if not self.check_collision(test_rect):
-                    directions.append((dx, dy))
-                    break
-
-        return directions or [(0, 0)]  # Asegurar que siempre retorne algo
-
-
-    def smart_move_towards(self, player):
-        """Movimiento inteligente que evita obstáculos"""
-        if not hasattr(self, 'current_level') or not self.current_level:
-            return self.move_towards_player(player)  # Fallback básico
-
-        # 1. Obtener dirección ideal hacia el jugador
-        dx = 1 if player.rect.centerx > self.rect.centerx else -1
-        dy = 1 if player.rect.centery > self.rect.centery else -1
-
-        # 2. Obtener direcciones seguras disponibles
-        safe_directions = self.get_safe_directions(player.rect.centerx, player.rect.centery)
-
-        # 3. Elegir la mejor dirección disponible
-        if safe_directions:
-            # Priorizar dirección hacia el jugador
-            if (dx, 0) in safe_directions:
-                best_dir = (dx, 0)
-            elif (0, dy) in safe_directions:
-                best_dir = (0, dy)
-            else:
-                best_dir = random.choice(safe_directions)
-        else:
-            # Si no hay direcciones seguras, quedarse quieto
-            best_dir = (0, 0)
-
-        # 4. Aplicar movimiento
-        self.rect.x += best_dir[0] * self.base_speed
-        self.rect.y += best_dir[1] * self.base_speed
-
-    def boss_take_damage(self, amount):
-        previous_health = self.health
-        self.health -= amount
-
-
-
-        if self.health < self.max_health // 2 and self.phase == 1:
-            self.phase = 2
-            self.current_speed += 1
-            boss_debug("¡CAMBIO DE FASE! (1->2)")
-        elif self.health <= 0:
-            self.state = "dead"
-
-            boss_debug("¡JEFE DERROTADO!")
-
-
-    def update_bombs(self, player, current_level):
-        # Validación de parámetros
-        if self.current_level is None:
-            return
+        if self.state == "active":
+            self._update_active(player, arena_blocks)
 
         for bomb in self.boss_bombs[:]:
-            if bomb.update(current_level):
-                current_level.check_bomb_collisions(bomb, player)
+            if bomb.update(self.current_level):
+                # Verificar colisión solo con jugador, no con jefe
+                if player.hitbox.colliderect(pygame.Rect(
+                        bomb.rect.x - bomb.explosion_range * TILE_SIZE,
+                        bomb.rect.y - bomb.explosion_range * TILE_SIZE,
+                        bomb.rect.width + bomb.explosion_range * TILE_SIZE * 2,
+                        bomb.rect.height + bomb.explosion_range * TILE_SIZE * 2
+                )):
+                    player.take_damage(1)
                 self.boss_bombs.remove(bomb)
 
+    def _activate_boss(self):
+        """Efecto dramático al activarse el jefe"""
+        # Temblor de pantalla
+        # Sonido especial
+        self.color = (255, 0, 0)
+
+    def _update_active(self, player, arena_blocks):
+        # Cambio de fase
+        if self.health <= self.max_health // 2 and self.phase == 1:
+            self.phase = 2
+            self.base_speed *= 1.3
+            self.attack_weights = [0.2, 0.4, 0.2, 0.1, 0.1]  # Más carga en fase 2
+
+        # Comportamiento según fase
+        if self.phase == 1:
+            if random.random() < 0.01 and self.attack_cooldown <= 0:
+                self._execute_random_attack(player)
+        else:
+            self._pursue_player(player)
+            if random.random() < 0.03 and self.attack_cooldown <= 0:
+                self._execute_random_attack(player)
+
+        self.attack_cooldown = max(0, self.attack_cooldown - 1)
+
+    def _execute_random_attack(self, player):
+        attack = random.choices(self.attacks, weights=self.attack_weights, k=1)[0]
+        attack(player)
+        self.attack_cooldown = random.randint(120, 180)  # 2-3 segundos
+
+    def _super_bombs(self, player):
+        if not hasattr(self, 'current_level') or not self.current_level:
+            return
+
+        for _ in range(2):  # Solo 2 super bombas
+            x = random.randint(TILE_SIZE, WIDTH - TILE_SIZE * 2)
+            y = random.randint(TILE_SIZE, HEIGHT - TILE_SIZE * 2)
+            bomb = Bomb(x, y, self, True, 5)  # Rango de explosión 5
+            bomb.rect.inflate_ip(20, 20)  # Bomba más grande
+            self.boss_bombs.append(bomb)
+
+        self.debug_log.append("¡Super bombas lanzadas!")
+
+    def _no_bombs_spell(self, player):
+        if player:
+            player.can_place_bombs = False
+            self.bombs_disabled = True
+            self.ability_duration = 300  # 5 segundos
+            self.debug_log.append("Bombas desactivadas!")
+
+            # Restablecer después de 5 segundos
+            pygame.time.set_timer(pygame.USEREVENT + 20, 5000, True)
+
+    def _invert_controls(self, player):
+        if player:
+            player.controls_inverted = True
+            self.controls_inverted = True
+            self.ability_duration = 300  # 5 segundos
+            self.debug_log.append("Controles invertidos!")
+
+            # Restablecer después de 5 segundos
+            pygame.time.set_timer(pygame.USEREVENT + 30, 5000, True)
+
+    def _pursue_player(self, player):
+        # Persecución directa en fase 2
+        if not player:
+            return
+
+        dx = player.rect.centerx - self.rect.centerx
+        dy = player.rect.centery - self.rect.centery
+        dist = max(1, int(math.sqrt(dx * dx + dy * dy)))
+
+        self.rect.x += (dx / dist) * self.current_speed
+        self.rect.y += (dy / dist) * self.current_speed
+
+        # Mantener dentro de la arena
+        self.rect.x = max(TILE_SIZE, min(WIDTH - TILE_SIZE - self.rect.width, self.rect.x))
+        self.rect.y = max(TILE_SIZE, min(HEIGHT - TILE_SIZE - self.rect.height, self.rect.y))
+
+    def _random_bombs(self, player):
+        # Lanzar 5 bombas en posiciones aleatorias
+        for _ in range(5):
+            x = random.randint(TILE_SIZE, WIDTH - TILE_SIZE * 2)
+            y = random.randint(TILE_SIZE, HEIGHT - TILE_SIZE * 2)
+            if hasattr(self, 'current_level') and self.current_level:
+                self.boss_bombs.append(Bomb(x, y, self, False, 3))
+        self.attack_cooldown = 120  # 2 segundos de cooldown
+
+
+
+    def _charge_attack(self, player):
+        if not player or self.is_charging:
+            return
+
+        self.state = "charging"
+        self.charge_direction = pygame.Vector2(
+            player.rect.centerx - self.rect.centerx,
+            player.rect.centery - self.rect.centery
+        ).normalize()
+
+        self.charge_timer = 60  # 1 segundo de carga
+        self.is_charging = True
+        self.base_speed *= self.charge_speed_multiplier
+        self.color = (255, 100, 100)  # Color de carga
+
+    def _update_charge(self):
+        if self.charge_timer <= 0:
+            self._end_charge()
+            return
+
+        self.charge_timer -= 1
+
+        # Movimiento durante la carga
+        self.rect.x += self.charge_direction.x * self.base_speed
+        self.rect.y += self.charge_direction.y * self.base_speed
+
+        # Verificar colisión con paredes
+        if self._check_wall_collision():
+            self._on_charge_collision()
+
+    def _check_wall_collision(self):
+        # Verificar bordes
+        if (self.rect.left <= TILE_SIZE or self.rect.right >= WIDTH - TILE_SIZE or
+                self.rect.top <= TILE_SIZE or self.rect.bottom >= HEIGHT - TILE_SIZE):
+            return True
+
+        # Verificar bloques
+        if not self.current_level:
+            return False
+
+        for block in self.current_level.map:
+            if not block.destroyed and self.rect.colliderect(block.rect):
+                return True
+        return False
+
+    def _on_charge_collision(self):
+        self.state = "stunned"
+        self.stun_timer = 90  # 1.5 segundos
+        self.is_charging = False
+        self.base_speed /= self.charge_speed_multiplier
+        self.color = (255, 200, 0)  # Color de aturdimiento
+        self.attack_cooldown = 180  # 3 segundos de cooldown
+
+    def _update_effects(self, player):
+        if self.ability_duration > 0:
+            self.ability_duration -= 1
+            if self.ability_duration <= 0:
+                self._reset_effects(player)
+
+        # Actualizar velocidad suavemente
+        self.current_speed += (self.base_speed - self.current_speed) * 0.1
+
+    def _reset_effects(self, player):
+        if player:
+            player.controls_inverted = False
+            player.can_place_bombs = True
+        self.controls_inverted = False
+        self.bombs_disabled = False
+
+
+    def _end_charge(self):
+        self.state = "active"
+        self.is_charging = False
+        self.base_speed /= self.charge_speed_multiplier
+        self.color = (200, 0, 0)  # Color normal
+        self.attack_cooldown = 120  # 2 segundos de cooldown
+
+    def take_damage(self, amount):
+        if self.state == "stunned":  # Doble daño cuando está aturdido
+            amount *= 2
+
+        self.health = max(0, self.health - amount)
+
+        # Cambio de fase
+        if self.health <= self.max_health // 2 and self.phase == 1:
+            self.phase = 2
+            self.base_speed *= 1.3
+
+        return self.health <= 0
 
     def draw(self, surface):
-        """Dibuja al jefe con indicadores de estado"""
         pygame.draw.rect(surface, self.color, self.rect)
 
         # Barra de vida
-        health_ratio = self.health / self.max_health
-        health_width = int(self.rect.width * health_ratio)
-        health_bar = pygame.Rect(self.rect.x, self.rect.y - 10, health_width, 5)
+        health_width = int(self.rect.width * (self.health / self.max_health))
+        health_bar = pygame.Rect(self.rect.x, self.rect.y - 15, health_width, 10)
         pygame.draw.rect(surface, (0, 255, 0), health_bar)
 
-        # Indicador de estado
-        state_color = (255, 165, 0) if self.is_exhausted else (200, 0, 0)
-        pygame.draw.circle(surface, state_color, (self.rect.right - 10, self.rect.top + 10), 5)
+        # Indicadores de estado
+        if self.controls_inverted:
+            pygame.draw.polygon(surface, (255, 0, 255), [
+                (self.rect.right - 10, self.rect.top + 10),
+                (self.rect.right - 20, self.rect.top + 20),
+                (self.rect.right - 10, self.rect.top + 20)
+            ])
 
-        # Dibujar bombas
+        if self.bombs_disabled:
+            pygame.draw.line(surface, (255, 0, 0),
+                             (self.rect.right - 25, self.rect.top + 10),
+                             (self.rect.right - 15, self.rect.top + 20), 3)
         for bomb in self.boss_bombs:
             bomb.draw(surface)

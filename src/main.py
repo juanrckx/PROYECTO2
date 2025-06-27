@@ -12,15 +12,7 @@ from utils import GameState, Difficulty, GRAY, GREEN, RED, BLUE, BLACK, HEIGHT, 
     ScrollingBackground, MAP_WIDTH, MAP_HEIGHT
 
 '''
-#TODO
-Boss Fight      
-#Bomb Lord:
-#Coloca 5 bombas en posiciones aleatorias
-#Puede invertir los controles del jugador
-#No puedes poner bombas por 5 segundos
-#Super bombas que explotan en un rango de todo el mapa
-#Embestida, luego de esta queda cansado
-class Boss_Fight:
+
 
 #TODO
 Ambientacion
@@ -52,6 +44,7 @@ ARREGLAR ENEMIGOS QUE NO SE ELIMINAN DEL MAPA
 IMPLEMENTAR A CLERIC
 AÑADIR OMITIR A ITEM
 REVISAR ITEMS Y SUMAS
+BLOQUES DESTRUCTIBLES ENCIERRAN AL JUGADOR
 
 
 
@@ -136,7 +129,7 @@ class Game:
         self.frozen_enemies = False  # Para control global
 
     def start_game(self, character_type):
-        self.current_level_index = 3
+        self.current_level_index = 0
         current_level = self.levels[self.current_level_index]
 
         # Crear jugador según el tipo seleccionado
@@ -454,6 +447,7 @@ class Game:
                 current_level.check_bomb_collisions(bomb, self.player)
                 self.player.bombs.remove(bomb)
 
+
         for enemy in current_level.enemies:
             if (enemy.state != "dead" and
                     self.player.hitbox.colliderect(enemy.rect) and
@@ -583,7 +577,7 @@ class Game:
             f"Nivel: {self.current_level_index + 1}/{len(self.levels)}",
             True, WHITE)
         bombs_text = DEFAULT_FONT.render(
-            f"Bombas: {self.player.available_bombs}/{self.player.bomb_capacity}",
+            f"Bombas: {self.player.available_bombs}",
             True, WHITE)
 
         window.blit(lives_text, (10, 10))
@@ -593,7 +587,7 @@ class Game:
 
         # Mostrar si tiene la llave
         key_text = DEFAULT_FONT.render(
-            "Llave: " + ("Sí" if self.player.key_collected else "No"),
+            "Llave: " + ("✓" if self.player.key_collected else "X"),
             True, WHITE)
         window.blit(key_text, (WIDTH // 2 - key_text.get_width() // 2, 10))
 

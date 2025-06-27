@@ -4,7 +4,6 @@ import pygame
 from utils import TILE_SIZE, PowerupType, WIDTH, HEIGHT, Difficulty, MAP_WIDTH, MAP_HEIGHT
 from bomb import Bomb
 from weapon import Weapon
-from boss import boss_debug
 
 class Player:
     def __init__(self, x, y, lives, speed, color, bomb_capacity, character_type, game):
@@ -246,7 +245,6 @@ class Player:
     def move(self, dx, dy, game_map, current_level):
         if hasattr(self, 'controls_inverted') and self.controls_inverted:
             dx, dy = -dx, -dy
-            boss_debug(f"Controles invertidos aplicados. Input: ({dx}, {dy})")
         if dx < 0:
             self.facing = "left"
         elif dx > 0:

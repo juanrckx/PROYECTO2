@@ -327,13 +327,8 @@ class Level:
                 if enemy.state != "dead":
                     for exp_rect in bomb.explosion_rects:
                         if enemy.rect.colliderect(exp_rect):
-                            if isinstance(enemy, Boss):
-                                enemy.boss_take_damage(amount=2)
-                            else:
-                                    enemy.enemy_take_damage(amount=2)
-                            if enemy.state == "dead":
-                                self.enemies.remove(enemy)
-                                break
+                            enemy.take_damage(amount=2)
+
 
 
     def generate_boss_powerup(self):

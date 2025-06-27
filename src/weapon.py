@@ -133,10 +133,7 @@ class Bullet:
 
         for enemy in current_level.enemies[:]:
             if enemy != "dead" and self.rect.colliderect(enemy.rect):
-                if Difficulty.FINAL_BOSS:
-                    enemy.boss_take_damage(self.damage)
-                else:
-                    enemy.enemy_take_damage(self.damage)
+                enemy.take_damage(self.damage)
 
 
                 if self.owner.item_effects["bullet_heal"]:

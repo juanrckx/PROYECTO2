@@ -67,7 +67,7 @@ class Enemy:
             # Si no puede moverse, cambiar dirección inmediatamente
             self.change_direction_timer = 60  # Forzar cambio de dirección
 
-    def enemy_take_damage(self, amount):
+    def take_damage(self, amount):
         self.health -= amount
         if random.random() <= 0.7 and len(self.powerups) < 5:
             self.powerups.append(Powerup(self.rect.x, self.rect.y))

@@ -61,4 +61,7 @@ class Bomb:
 
     def draw(self, surface):
         if not self.exploded:
-            pygame.draw.rect(surface, (255, 0, 0), self.rect)
+            if self.is_super:
+                pygame.draw.circle(surface, (255, 255, 0), self.rect.center, self.rect.width // 2 + 5, 2)
+            else:
+                pygame.draw.rect(surface, (255, 0, 0), self.rect)
