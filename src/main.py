@@ -42,10 +42,7 @@ PYRO
 
 
 #TODO
-ARREGLAR BOMBAS
-IMPLEMENTAR A CLERIC
-AÑADIR OMITIR A ITEM
-ENEMIGOS DISPARAN
+
 AUMENTAR PUNTAJE
 
 
@@ -108,7 +105,6 @@ class Game:
             "music_volume": 0.5,
             "sfx_volume": 0.7,
             "fullscreen": False,
-            "difficulty": "normal"
         }
 
         # Datos de records
@@ -133,8 +129,8 @@ class Game:
         ]
 
         self.item_icons = {
-            "bullet_heal": pygame.image.load(r"assets\textures\items\the_high_priestess.png").convert_alpha(),
-            "has_shield": pygame.image.load(r"assets\textures\items\the_lovers.png").convert_alpha(),
+            "bullet_heal": pygame.image.load(r"assets\textures\items\the_lovers.png").convert_alpha(),
+            "has_shield": pygame.image.load(r"assets\textures\items\the_high_priestess.png").convert_alpha(),
             "shotgun": pygame.image.load(r"assets\textures\items\the_chariot.png").convert_alpha()
         }
         for key in self.item_icons:
@@ -285,7 +281,7 @@ class Game:
         }
         self.frozen_enemies = False
         self.player.explosion_range = self.player.base_explosion_range
-        self.player.weapon_damage = self.player.weapon_base_damage
+        self.player.weapon.damage = self.player.weapon.base.damage
         self.player.weapon.speed = 10
         self.player.weapon.damage = self.player.weapon.base_damage
 
@@ -519,11 +515,6 @@ class Game:
 
 
 
-        """Maneja eventos en la pantalla entre niveles"""
-
-
-
-
         return True
 
 
@@ -546,7 +537,7 @@ class Game:
         if keys[pygame.K_d]: dx = 1
 
         self.player.move(dx, dy, current_level.map, current_level)
-        TrapManager.check_collision(player)
+        #TrapManager.check_collision(player)
 
 
 
@@ -598,15 +589,17 @@ class Game:
                     not current_level.key.collected and
                     self.player.hitbox.colliderect(current_level.key.rect)):
 
+                    self.score += 100
                     current_level.key.collected = True
                     self.player.key_collected = True
                     current_level.open_door()
+
         if current_level.difficulty == Difficulty.TRANSITION_ROOM:
             current_level.open_door()
 
-            if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
-                self.between_levels()
-                self.score += 500
+        if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
+            self.between_levels()
+            self.score += 500
 
         if hasattr(self, 'last_state') and self.last_state != self.state:
             self.handle_music_transition()
@@ -789,8 +782,8 @@ class Game:
             if not block.destroyed:
                 block.draw(window)
         # Dibujar trampas
-        for trap in current_level.traps:
-            trap.draw(window)
+        #for trap in current_level.traps:
+            #trap.draw(window)
 
 
         # Dibujar puerta y llave
@@ -814,7 +807,6 @@ class Game:
 
         self.player.draw(window)
         self.player.draw_items(window)
-        self.player.draw_debug_info(window)
         # Dibujar HUD
         lives_text = DEFAULT_FONT.render(f"Vidas: {self.player.lives}", True, WHITE)
         score_text = DEFAULT_FONT.render(f"Puntos: {self.score}", True, WHITE)
@@ -832,7 +824,7 @@ class Game:
 
         # Mostrar si tiene la llave
         key_text = DEFAULT_FONT.render(
-            "Llave: " + ("✓" if self.player.key_collected else "X"),
+            "Llave: " + ("Si" if self.player.key_collected else "X"),
             True, WHITE)
         window.blit(key_text, (WIDTH // 2 - key_text.get_width() // 2, 10))
 

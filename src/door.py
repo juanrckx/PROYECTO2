@@ -1,31 +1,18 @@
 import pygame
-from utils import GREEN, RED, TILE_SIZE, WHITE, DEFAULT_FONT, WIDTH
+from utils import GREEN, RED, TILE_SIZE, WHITE, DEFAULT_FONT
 
 
 class Door:
     def __init__(self, x, y):
         self.rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
         self.open = False
-        self.wood_color =
+
 
     def draw(self, surface):
-        if self.open:
-            # Dividir la puerta en dos partes que se "abren"
-            if self.rect.x == 0 or self.rect.x >= WIDTH - TILE_SIZE:  # Puertas laterales
-                pygame.draw.rect(surface, GREEN, (self.rect.x, self.rect.y, TILE_SIZE // 2, TILE_SIZE))
-                pygame.draw.rect(surface, GREEN, (self.rect.x + TILE_SIZE // 2, self.rect.y, TILE_SIZE // 2, TILE_SIZE))
-                # Línea central
-                pygame.draw.line(surface, WHITE,
-                                 (self.rect.x + TILE_SIZE // 2, self.rect.y),
-                                 (self.rect.x + TILE_SIZE // 2, self.rect.y + TILE_SIZE), 3)
-            else:  # Puertas superior/inferior
-                pygame.draw.rect(surface, GREEN, (self.rect.x, self.rect.y, TILE_SIZE, TILE_SIZE // 2))
-                pygame.draw.rect(surface, GREEN, (self.rect.x, self.rect.y + TILE_SIZE // 2, TILE_SIZE, TILE_SIZE // 2))
-                pygame.draw.line(surface, WHITE,
-                                 (self.rect.x, self.rect.y + TILE_SIZE // 2),
-                                 (self.rect.x + TILE_SIZE, self.rect.y + TILE_SIZE // 2), 3)
-        else:
-            pygame.draw.rect(surface, RED, self.rect)
+        color = GREEN if self.open else RED
+        pygame.draw.rect(surface, color, self.rect)
+        text = DEFAULT_FONT.render("→", True, WHITE)
+        surface.blit(text, (self.rect.x + 10, self.rect.y + 5))
 
 
 class Key:

@@ -73,15 +73,14 @@ class Level:
                 else:
                     # Bloques internos pueden ser destructibles o indestructibles
                     if random.random() < indestructible_prob:
-                        if not self.would_trap_player(x, y, safe_zone):
-                            self.map.append(Block(x, y, destructible=random.choice([True, False])))
+                        self.map.append(Block(x, y, destructible=random.choice([True, False])))
 
             escape_routes = [(2,3), (3,2)]
             for j, k in escape_routes:
                 self.map = [b for b in self.map if not (b.rect.x == j * TILE_SIZE and b.rect.y == k * TILE_SIZE)]
 
         self.ensure_door_access()
-        #self.would_trap_player(10, 10, safe_zone)
+        self.ensure_starting_position()
 
     def _generate_transition_room(self):
         """Genera una sala del tamaño normal (20x15) con características especiales"""
@@ -177,29 +176,7 @@ class Level:
                     # Crear un bloque destructible (para que siempre se pueda abrir camino)
                     self.map.append(Block(path_x, path_y, destructible=True))
 
-    def would_trap_player(self, x, y, safe_zone):
-        trap_patterns = ([(x, y), (x + 1, y), (x, y + 1)], [(x,y), (x - 1,y), (x, y - 1)], #Patron L
-                         [(x, y), (x + 1, y), ( x - 1, y), (x, y + 1)], # Patron U
-                         [(x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1)]) #Patron de esquinas
 
-        for pattern in trap_patterns:
-            all_blocks_indestructible = True
-            for px, py in pattern:
-                if (px, py) in safe_zone:
-                    all_blocks_indestructible = False
-                    break
-
-                block_exists = any(b.rect.x == px * TILE_SIZE and b.rect.y == py *
-                                   TILE_SIZE for b in self.map)
-
-                if not block_exists and (px, py) != (x, y):
-                    all_blocks_indestructible = False
-                    break
-
-            if all_blocks_indestructible:
-                return True
-
-        return False
 
 
     def generate_door(self):
@@ -214,6 +191,23 @@ class Level:
         # Generar la llave en un bloque destructible
         self.generate_key()
 
+    def ensure_starting_position(self):
+        """Garantiza que el área inicial esté despejada"""
+        safe_zone = [
+            (1, 1), (1, 2), (2, 1), (2, 2),
+            (1, 3), (3, 1), (2, 3), (3, 2)
+        ]
+
+        # Eliminar bloques en zona segura
+        self.map = [
+            b for b in self.map
+            if not any(
+                b.rect.x == x * TILE_SIZE and
+                b.rect.y == y * TILE_SIZE
+                for x, y in safe_zone
+            )
+        ]
+
 
 
     def open_door(self):
@@ -225,7 +219,8 @@ class Level:
                         block.rect.y == door_y * TILE_SIZE):
                     del self.map[i]
                     break
-        self.door.open = True
+        if self.door:
+            self.door.open = True
 
     def generate_key(self):
         # Colocar la llave en un bloque destructible aleatorio
@@ -296,25 +291,29 @@ class Level:
         player_hit = False
         if bomb.exploded:
             for block in self.map[:]:
-                if block.destructible and not block.destroyed:
-                    for exp_rect in bomb.explosion_rects:
-                        if block.rect.colliderect(exp_rect):
-                            block.destroyed = True
-                            self.map.remove(block)
-                            if random.random() <= 0.7 and len(self.powerups) < 5:
-                                self.powerups.append(Powerup(block.rect.x, block.rect.y))
+                is_border = self.is_border_block(block)
+                if not is_border and (block.destructible or
+                                      (hasattr(player, 'item_effects') and player.item_effects.get(
+                                          "indestructible_bomb"))):
+                    if not block.destroyed:
+                        for exp_rect in bomb.explosion_rects:
+                            if block.rect.colliderect(exp_rect):
+                                block.destroyed = True
+                                self.map.remove(block)
+                                if random.random() <= 0.7 and len(self.powerups) < 5:
+                                    self.powerups.append(Powerup(block.rect.x, block.rect.y))
 
-                            if (getattr(block, 'has_key') and
-                                    block.has_key and not block.revealed_key):
-                                self.key.rect.x = block.rect.x
-                                self.key.rect.y = block.rect.y
-                                self.key.collected = False
-                                self.key.revealed = True
-                            if not (hasattr(block, 'has_key') and block.has_key):
-                                if block in self.map:
-                                    self.map.remove(block)
+                                if (getattr(block, 'has_key') and
+                                        block.has_key and not block.revealed_key):
+                                    self.key.rect.x = block.rect.x
+                                    self.key.rect.y = block.rect.y
+                                    self.key.collected = False
+                                    self.key.revealed = True
+                                if not (hasattr(block, 'has_key') and block.has_key):
+                                    if block in self.map:
+                                        self.map.remove(block)
 
-                            break
+                                break
 
             for exp_rect in bomb.explosion_rects:
                 if not player_hit and player.hitbox.colliderect(
@@ -328,26 +327,6 @@ class Level:
                     for exp_rect in bomb.explosion_rects:
                         if enemy.rect.colliderect(exp_rect):
                             enemy.take_damage(amount=2)
-
-            if bomb.exploded:
-                if hasattr(player, 'item_effects') and player.item_effects.get("indestructible_bomb"):
-                    for exp_rect in bomb.explosion_rects:
-                        if block.rect.colliderect(exp_rect):
-                            if exp_rect.x == 0 or exp_rect.x == WIDTH - TILE_SIZE or exp_rect.y == 0 or exp_rect.y == HEIGHT - TILE_SIZE:
-                                continue
-                            block.destroyed = True
-                            self.map.remove(block)
-                            if random.random() <= 0.7 and len(self.powerups) < 5:
-                                self.powerups.append(Powerup(block.rect.x, block.rect.y))
-                            if (getattr(block, 'has_key') and
-                                    block.has_key and not block.revealed_key):
-                                self.key.rect.x = block.rect.x
-                                self.key.rect.y = block.rect.y
-                                self.key.collected = False
-                                self.key.revealed = True
-                            if not (hasattr(block, 'has_key') and block.has_key):
-                                if block in self.map:
-                                    self.map.remove(block)
 
 
 

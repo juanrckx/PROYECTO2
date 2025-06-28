@@ -49,12 +49,12 @@ class Player:
         self.damage = 1
         self.item_effects = {"speed_boost": False,
                             "homing_bullets": False,
-                            "shotgun": False,
-                            "bullet_heal": False,
-                            "has_shield": False,
+                            "shotgun": True if character_type == 1 else False,
+                            "bullet_heal": True if character_type == 3 else False,
+                            "has_shield": True if character_type == 2 else False,
                             "double_damage": False,
                             "revive_chance": False,
-                            "indestructible_bomb": True}
+                            "indestructible_bomb": False}
         self.permanent_items = []
         self.item_surfaces = self._load_item_surfaces()
         self.bullet_heal_counter = 0
@@ -65,6 +65,36 @@ class Player:
         self.was_phasing = None
         self.facing = "down"
         self.load_character_animations(character_type)
+
+    def _initialize_character_item(self, character_type):
+        starter_items = {
+            1: ["shotgun"],  # Tanky
+            2: ["has_shield"],  # Pyro
+            3: ["bullet_heal"]  # Cleric
+        }
+
+        # Inicializar permanent_items si no existe
+        if not hasattr(self, 'permanent_items'):
+            self.permanent_items = []
+
+        for item in starter_items.get(character_type, []):
+            # Usar tu función existente _add_permanent_item
+            self._add_permanent_item(item)
+
+            # Activar el efecto
+            self.item_effects[item] = True
+            self.apply_item_effect(item)
+
+    def _add_permanent_item(self, effect_name):
+        """Añade un item permanente y aplica su efecto"""
+        if effect_name not in [item['effect'] for item in self.permanent_items]:
+            # Usar get() para manejar items sin sprite definido
+            surface = self.item_surfaces.get(effect_name, self._create_fallback_icon(effect_name))
+
+            self.permanent_items.append({
+                'effect': effect_name,
+                'surface': surface
+            })
 
     def _load_item_surfaces(self):
         """Carga las superficies de los items"""
@@ -79,21 +109,11 @@ class Player:
                             "indestructible_bomb": "the_tower.png"}
         surfaces = {}
         for effect, img in items.items():
-            try:
-                path = f"assets/textures/items/{img}"
-                surf = pygame.image.load(path).convert_alpha()
-                surfaces[effect] = pygame.transform.scale(surf, (32, 32))
-            except:
-                surfaces[effect] = self._create_fallback_icon(effect)
+            path = f"assets/textures/items/{img}"
+            surf = pygame.image.load(path).convert_alpha()
+            surfaces[effect] = pygame.transform.scale(surf, (32, 32))
         return surfaces
 
-    def _create_fallback_icon(self, effect):
-        """Crea un ícono simple para efectos sin imagen"""
-        surf = pygame.Surface((32, 32), pygame.SRCALPHA)
-        pygame.draw.rect(surf, (100, 100, 255), (0, 0, 32, 32), border_radius=4)
-        text = DEFAULT_FONT.render(effect[:3], True, WHITE)
-        surf.blit(text, (16 - text.get_width() // 2, 16 - text.get_height() // 2))
-        return surf
 
 
     def load_character_animations(self, character_type):
@@ -469,10 +489,6 @@ class Player:
         """Dibuja los ítems activos en la esquina superior derecha"""
         x_pos = WIDTH - 40
         y_pos = 10
-
-        # Dibujar título
-        title = DEFAULT_FONT.render("Ítems:", True, WHITE)
-        surface.blit(title, (x_pos - 100, y_pos))
 
         # Dibujar ítems
         for i, item in enumerate(self.permanent_items):
