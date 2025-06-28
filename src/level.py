@@ -123,9 +123,6 @@ class Level:
         )
 
         remaining_blocks = [b for b in self.map if spawn_rect.colliderect(b.rect)]
-        if remaining_blocks:
-            print(
-                f"¡Atención! Bloques en spawn: {[(b.rect.x // TILE_SIZE, b.rect.y // TILE_SIZE) for b in remaining_blocks]}")
 
     def _generate_transition_room(self):
         """Genera una sala del tamaño normal (20x15) con características especiales"""
@@ -366,7 +363,7 @@ class Level:
                 if not player_hit and player.hitbox.colliderect(
                         exp_rect) and not player.invincible and not player.active_effects.get("bomb_immune", False):
                     player_hit = True
-                    player.take_damage(amount=1)
+                    player.take_damage(amount=1, is_bomb_damage = True)
                     break
 
             for enemy in self.enemies[:]:  # Usamos copia para poder modificar la lista
