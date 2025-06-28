@@ -151,52 +151,7 @@ class Game:
             self.score = 0
             self.start_time = pygame.time.get_ticks()
         current_level.generate_level()
-        self.ensure_starting_position()
 
-    def ensure_starting_position(self):
-        """Limpia solo el área de spawn (3x3 tiles) pero preserva TODOS los bloques en bordes"""
-        current_level = self.levels[self.current_level_index]
-
-        # 1. Obtener spawn point (con valor por defecto (1,1) si no existe)
-        spawn_x, spawn_y = getattr(current_level, 'player_spawn', (1, 1))
-
-        # 2. Definir zona segura relativa al spawn (3x3 tiles)
-        safe_zone = [
-            (spawn_x + dx, spawn_y + dy)
-            for dx in [-1, 0, 1]
-            for dy in [-1, 0, 1]
-        ]
-
-        # 3. Filtrar bloques: Eliminar solo los que están en la zona segura Y NO están en bordes
-        current_level.map = [
-            b for b in current_level.map
-            if not (
-                    any(  # Está en zona segura
-                        (b.rect.x // TILE_SIZE == x) and
-                        (b.rect.y // TILE_SIZE == y)
-                        for x, y in safe_zone
-                    )
-                    and not (  # Y NO está en ningún borde
-                    b.rect.x == 0 or
-                    b.rect.y == 0 or
-                    b.rect.x == (20 - TILE_SIZE) or
-                    b.rect.y == (15 - TILE_SIZE)
-            )
-            )
-        ]
-
-        # 4. Debug: Verificar que el spawn está despejado
-        spawn_rect = pygame.Rect(
-            spawn_x * TILE_SIZE,
-            spawn_y * TILE_SIZE,
-            TILE_SIZE,
-            TILE_SIZE
-        )
-
-        remaining_blocks = [b for b in current_level.map if spawn_rect.colliderect(b.rect)]
-        if remaining_blocks:
-            print(
-                f"¡Atención! Bloques en spawn: {[(b.rect.x // TILE_SIZE, b.rect.y // TILE_SIZE) for b in remaining_blocks]}")
 
     def between_levels(self):
         """Transición al siguiente nivel con reinicio de estados"""
@@ -232,12 +187,12 @@ class Game:
 
         # 4. Resetear propiedades del jugador
         self._reset_player_for_new_level()
-        self.ensure_starting_position()
 
 
         # 5. Limpiar efectos temporales
         self._clear_temporary_effects()
         current_level.generate_level()
+        current_level.ensure_starting_position()
 
         print(f"Level {self.current_level_index + 1} loaded, {len(self.levels)}")
         return True
@@ -249,7 +204,6 @@ class Game:
         self.player.hitbox.x = self.player.rect.x + 5
         self.player.hitbox.y = self.player.rect.y + 5
         self.player.key_collected = False
-        self.player.available_bombs = self.player.bomb_capacity  # Recargar bombas
         self.player.invincible = False
         self.player.visible = True
         self.player.can_place_bombs = True
@@ -263,7 +217,7 @@ class Game:
         }
         self.frozen_enemies = False
         self.player.explosion_range = self.player.base_explosion_range
-        self.player.weapon.damage = self.player.weapon.base_damage
+        self.player.weapon_damage = self.player.weapon_base_damage
         self.player.weapon.speed = 10
 
 

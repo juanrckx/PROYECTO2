@@ -45,16 +45,16 @@ class Player:
             "phase_through": False,
             "frozen_enemies": False}
 
-        self.weapon = Weapon(self)
-        self.damage = 1
+        self.weapon = Weapon(self, self._get_character_damage(character_type))
+        self._setup_character_items(character_type)
         self.item_effects = {"speed_boost": False,
                             "homing_bullets": False,
-                            "shotgun": False,
-                            "bullet_heal": False,
-                            "has_shield": False,
+                            "shotgun": True if character_type == 1 else False,
+                            "bullet_heal": True if character_type == 3 else False,
+                            "has_shield": True if character_type == 3 else False,
                             "double_damage": False,
                             "revive_chance": False,
-                            "indestructible_bomb": True}
+                            "indestructible_bomb": False}
         self.permanent_items = []
         self.item_surfaces = self._load_item_surfaces()
         self.bullet_heal_counter = 0
@@ -65,6 +65,19 @@ class Player:
         self.was_phasing = None
         self.facing = "down"
         self.load_character_animations(character_type)
+
+    def _get_character_damage(self, character_type):
+        return {0: 1,
+                1: 1,
+                2: 2,
+                3: 1}[character_type]
+
+    def _setup_character_items(self, character_type):
+        starter_items = {1: ["shotgun"],
+                         2: ["has_shield"],
+                         3: ["bullet_heal"]}
+        for item in starter_items.get(character_type, []):
+            self.apply_item_effect(item)
 
     def _load_item_surfaces(self):
         """Carga las superficies de los items"""
@@ -264,11 +277,22 @@ class Player:
             self.item_effects["indestructible_bomb"] = True
 
     def reset_item_effects(self):
-                # Restablecer todos los efectos de items
-        if self.item_effects["speed_boost"]:
-            self.speed = self.base_speed
+        permanent_effects = [item['effect'] for item in self.permanent_items]
 
+        # Resetear todos los efectos primero
+        self.speed = self.base_speed
+        self.damage = self.base_damage
+        self.enemy_damage_multiplier = 1.0
+        self.item_effects = {k: False for k in self.item_effects}
 
+        # Reaplicar efectos permanentes
+        for effect in permanent_effects:
+            self.item_effects[effect] = True
+            if effect == "speed_boost":
+                self.speed = self.base_speed + 5
+            elif effect == "double_damage":
+                self.damage += 5
+                self.enemy_damage_multiplier = 2.0
         self.item_effects = {k: False for k in self.item_effects}
         self.item_effects["revive_chance"] = False
 

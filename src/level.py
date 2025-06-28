@@ -81,7 +81,51 @@ class Level:
                 self.map = [b for b in self.map if not (b.rect.x == j * TILE_SIZE and b.rect.y == k * TILE_SIZE)]
 
         self.ensure_door_access()
-        #self.would_trap_player(10, 10, safe_zone)
+        self.ensure_starting_position()
+
+    def ensure_starting_position(self):
+        """Limpia solo el área de spawn (3x3 tiles) pero preserva TODOS los bloques en bordes"""
+
+        # 1. Obtener spawn point (con valor por defecto (1,1) si no existe)
+        spawn_x, spawn_y = getattr(self.map, 'player_spawn', (1, 1))
+
+        # 2. Definir zona segura relativa al spawn (3x3 tiles)
+        safe_zone = [
+            (spawn_x + dx, spawn_y + dy)
+            for dx in [-1, 0, 1]
+            for dy in [-1, 0, 1]
+        ]
+
+        # 3. Filtrar bloques: Eliminar solo los que están en la zona segura Y NO están en bordes
+        self.map = [
+            b for b in self.map
+            if not (
+                    any(  # Está en zona segura
+                        (b.rect.x // TILE_SIZE == x) and
+                        (b.rect.y // TILE_SIZE == y)
+                        for x, y in safe_zone
+                    )
+                    and not (  # Y NO está en ningún borde
+                    b.rect.x == 0 or
+                    b.rect.y == 0 or
+                    b.rect.x == (20 - TILE_SIZE) or
+                    b.rect.y == (15 - TILE_SIZE)
+            )
+            )
+        ]
+
+        # 4. Debug: Verificar que el spawn está despejado
+        spawn_rect = pygame.Rect(
+            spawn_x * TILE_SIZE,
+            spawn_y * TILE_SIZE,
+            TILE_SIZE,
+            TILE_SIZE
+        )
+
+        remaining_blocks = [b for b in self.map if spawn_rect.colliderect(b.rect)]
+        if remaining_blocks:
+            print(
+                f"¡Atención! Bloques en spawn: {[(b.rect.x // TILE_SIZE, b.rect.y // TILE_SIZE) for b in remaining_blocks]}")
 
     def _generate_transition_room(self):
         """Genera una sala del tamaño normal (20x15) con características especiales"""
@@ -296,25 +340,27 @@ class Level:
         player_hit = False
         if bomb.exploded:
             for block in self.map[:]:
-                if block.destructible and not block.destroyed:
-                    for exp_rect in bomb.explosion_rects:
-                        if block.rect.colliderect(exp_rect):
-                            block.destroyed = True
-                            self.map.remove(block)
-                            if random.random() <= 0.7 and len(self.powerups) < 5:
-                                self.powerups.append(Powerup(block.rect.x, block.rect.y))
+                is_border = self.is_border_block(block)
+                if not is_border and (block.destructible or hasattr(player, 'item_effects') and player.item_effects.get("indestructible_bomb")):
+                    if not block.destroyed:
+                        for exp_rect in bomb.explosion_rects:
+                            if block.rect.colliderect(exp_rect):
+                                block.destroyed = True
+                                self.map.remove(block)
+                                if random.random() <= 0.7 and len(self.powerups) < 5:
+                                    self.powerups.append(Powerup(block.rect.x, block.rect.y))
 
-                            if (getattr(block, 'has_key') and
-                                    block.has_key and not block.revealed_key):
-                                self.key.rect.x = block.rect.x
-                                self.key.rect.y = block.rect.y
-                                self.key.collected = False
-                                self.key.revealed = True
-                            if not (hasattr(block, 'has_key') and block.has_key):
-                                if block in self.map:
-                                    self.map.remove(block)
+                                if (getattr(block, 'has_key') and
+                                        block.has_key and not block.revealed_key):
+                                    self.key.rect.x = block.rect.x
+                                    self.key.rect.y = block.rect.y
+                                    self.key.collected = False
+                                    self.key.revealed = True
+                                if not (hasattr(block, 'has_key') and block.has_key):
+                                    if block in self.map:
+                                        self.map.remove(block)
 
-                            break
+                                break
 
             for exp_rect in bomb.explosion_rects:
                 if not player_hit and player.hitbox.colliderect(
@@ -328,26 +374,6 @@ class Level:
                     for exp_rect in bomb.explosion_rects:
                         if enemy.rect.colliderect(exp_rect):
                             enemy.take_damage(amount=2)
-
-            if bomb.exploded:
-                if hasattr(player, 'item_effects') and player.item_effects.get("indestructible_bomb"):
-                    for exp_rect in bomb.explosion_rects:
-                        if block.rect.colliderect(exp_rect):
-                            if exp_rect.x == 0 or exp_rect.x == WIDTH - TILE_SIZE or exp_rect.y == 0 or exp_rect.y == HEIGHT - TILE_SIZE:
-                                continue
-                            block.destroyed = True
-                            self.map.remove(block)
-                            if random.random() <= 0.7 and len(self.powerups) < 5:
-                                self.powerups.append(Powerup(block.rect.x, block.rect.y))
-                            if (getattr(block, 'has_key') and
-                                    block.has_key and not block.revealed_key):
-                                self.key.rect.x = block.rect.x
-                                self.key.rect.y = block.rect.y
-                                self.key.collected = False
-                                self.key.revealed = True
-                            if not (hasattr(block, 'has_key') and block.has_key):
-                                if block in self.map:
-                                    self.map.remove(block)
 
 
 
