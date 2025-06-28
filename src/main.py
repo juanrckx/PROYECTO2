@@ -215,7 +215,7 @@ class Game:
 
 
     def start_game(self, character_type):
-        self.current_level_index = 0
+        self.current_level_index = 4
         current_level = self.levels[self.current_level_index]
         self.level_start_time = pygame.time.get_ticks()
 
@@ -223,7 +223,7 @@ class Game:
         if character_type == 0:  # Bomber
             self.player = Player(1, 1, 5, 4, BLUE, 10, 0,  self )
         elif character_type == 1:  # Tanky
-            self.player = Player(1, 1, 7, 3, GREEN, 8, 1,  self)
+            self.player = Player(1, 1, 99, 3, GREEN, 89, 1,  self)
         elif character_type == 2:  # Pyro
             self.player = Player(1, 1, 3, 5, RED, 15, 2,  self)
         elif character_type == 3: #Cleric
@@ -256,7 +256,7 @@ class Game:
             current_level.difficulty,
             self)
 
-        if self.current_level_index == 3:  # Índice del nivel del jefe
+        if self.current_level_index == 4:  # Índice del nivel del jefe
             self.player.can_place_bombs = False
             pygame.time.set_timer(pygame.USEREVENT + 40, 3000)
             boss_count = sum(1 for e in current_level.enemies if isinstance(e, Boss))
@@ -644,8 +644,8 @@ class Game:
         if current_level.difficulty == Difficulty.TRANSITION_ROOM:
             current_level.open_door()
 
-        if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
-            self.between_levels()
+        #if current_level.door.open and self.player.hitbox.colliderect(current_level.door.rect):
+            #self.between_levels()
             self.score += 500
 
         if hasattr(self, 'last_state') and self.last_state != self.state:
