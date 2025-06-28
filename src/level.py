@@ -296,14 +296,6 @@ class Level:
         player_hit = False
         if bomb.exploded:
             for block in self.map[:]:
-                if hasattr(player, 'item_effects') and player.item_effects.get("indestructible_bomb"):
-                    for exp_rect in bomb.explosion_rects:
-                        if block.rect.colliderect(exp_rect):
-                            if exp_rect.x == 0 or exp_rect.x == WIDTH - TILE_SIZE or exp_rect.y == 0 or exp_rect.y == HEIGHT - TILE_SIZE:
-                                continue
-                            block.destroyed = True
-                            self.map.remove(block)
-
                 if block.destructible and not block.destroyed:
                     for exp_rect in bomb.explosion_rects:
                         if block.rect.colliderect(exp_rect):
@@ -336,6 +328,26 @@ class Level:
                     for exp_rect in bomb.explosion_rects:
                         if enemy.rect.colliderect(exp_rect):
                             enemy.take_damage(amount=2)
+
+            if bomb.exploded:
+                if hasattr(player, 'item_effects') and player.item_effects.get("indestructible_bomb"):
+                    for exp_rect in bomb.explosion_rects:
+                        if block.rect.colliderect(exp_rect):
+                            if exp_rect.x == 0 or exp_rect.x == WIDTH - TILE_SIZE or exp_rect.y == 0 or exp_rect.y == HEIGHT - TILE_SIZE:
+                                continue
+                            block.destroyed = True
+                            self.map.remove(block)
+                            if random.random() <= 0.7 and len(self.powerups) < 5:
+                                self.powerups.append(Powerup(block.rect.x, block.rect.y))
+                            if (getattr(block, 'has_key') and
+                                    block.has_key and not block.revealed_key):
+                                self.key.rect.x = block.rect.x
+                                self.key.rect.y = block.rect.y
+                                self.key.collected = False
+                                self.key.revealed = True
+                            if not (hasattr(block, 'has_key') and block.has_key):
+                                if block in self.map:
+                                    self.map.remove(block)
 
 
 
