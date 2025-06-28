@@ -1,7 +1,7 @@
 import sys
 
 import pygame
-
+from traps import TrapManager
 from boss import Boss
 from button import Button
 from interlevelscreen import InterLevelScreen
@@ -208,6 +208,12 @@ class Game:
         self.player.visible = True
         self.player.can_place_bombs = True
         pygame.time.set_timer(pygame.USEREVENT + 20, 0)
+        self.player.controls_inverted = False
+        self.player.speed = self.player.base_speed
+        self.player.ice_applied = False
+        pygame.time.set_timer(pygame.USEREVENT + 50, 0)
+
+
 
     def _clear_temporary_effects(self):
         """Limpia efectos que no deben persistir entre niveles"""
@@ -345,6 +351,11 @@ class Game:
 
                 if event.key == pygame.K_ESCAPE:
                     self.state = GameState.MENU
+            if event.type == pygame.USEREVENT + 50:
+                self.player.speed = getattr(self.player, "original_speed", self.player.speed)
+                self.player.ice_applied = False
+                pygame.time.set_timer(pygame.USEREVENT + 50, 0)  # Cancelar el evento repetido
+
 
 
 
@@ -410,6 +421,9 @@ class Game:
         if keys[pygame.K_d]: dx = 1
 
         self.player.move(dx, dy, current_level.map, current_level)
+        TrapManager.check_collision(player)
+
+
 
         for enemy in current_level.enemies[:]:
             if isinstance(enemy, Boss):  # Comportamiento especial para el jefe
@@ -531,6 +545,9 @@ class Game:
         for block in current_level.map:
             if not block.destroyed:
                 block.draw(window)
+        # Dibujar trampas
+        for trap in current_level.traps:
+            trap.draw(window)
 
 
         # Dibujar puerta y llave

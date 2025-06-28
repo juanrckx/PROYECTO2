@@ -7,6 +7,8 @@ from utils import Difficulty, TILE_SIZE, PowerupType, WIDTH, HEIGHT
 from enemy import Enemy
 from block import Block
 from door import Door, Key
+from traps import TrapManager, Trap
+from traps import Trap,TrapType
 
 
 class Level:
@@ -21,13 +23,16 @@ class Level:
         self.enemies = []
         self.door_block_position = None
         self.powerups = []
-        self.generate_level()
         self.powerup_spawn_count = {"EXTRA_LIFE": 0,
             "EXTRA_BOMB": 0,
             "EXTRA_VELOCITY": 0,
             "EXTRA_DAMAGE": 0,
             "EXPLOSION_RANGE": 0,}
         self.last_powerup_timer = 0
+
+        self.trap_manager = None
+        self.traps = []
+        self.generate_level()
 
     def generate_level(self):
 
@@ -79,8 +84,14 @@ class Level:
             escape_routes = [(2,3), (3,2)]
             for j, k in escape_routes:
                 self.map = [b for b in self.map if not (b.rect.x == j * TILE_SIZE and b.rect.y == k * TILE_SIZE)]
+        for _ in range(5):
+            x = random.randint(2, 18)
+            y = random.randint(2, 13)
+            if not any(b.rect.collidepoint(x * TILE_SIZE, y * TILE_SIZE) for b in self.map):
+                self.traps.append(Trap(x, y, random.choice([TrapType.FIRE, TrapType.ICE])))
 
         self.ensure_door_access()
+<<<<<<< Updated upstream
         self.ensure_starting_position()
 
     def ensure_starting_position(self):
@@ -126,6 +137,35 @@ class Level:
         if remaining_blocks:
             print(
                 f"¡Atención! Bloques en spawn: {[(b.rect.x // TILE_SIZE, b.rect.y // TILE_SIZE) for b in remaining_blocks]}")
+=======
+        #self.would_trap_player(10, 10, safe_zone)
+        self.generate_traps()
+
+    def generate_traps(self, cantidad = 5):
+        width, height = 20, 15
+        tipos = ["fuego", "veneno", "hielo"]
+        posiciones_validas = []
+
+        for x in range(1, width - 1):
+            for y in range(1, height - 1):
+            # Verifica que NO haya bloque en esa posición
+                ocupado = any(
+                    block.rect.collidepoint(x * TILE_SIZE + TILE_SIZE // 2, y * TILE_SIZE + TILE_SIZE // 2)for block in self.map)
+
+            # No generar trampas en zona segura
+            if not ocupado and (x, y) not in [(1, 1), (1, 2), (2, 1), (2, 2), (1, 3), (3, 1)]:
+                posiciones_validas.append((x, y))
+
+        random.shuffle(posiciones_validas)
+        traps_lista = []
+
+        for i in range(min(cantidad, len(posiciones_validas))):
+            x, y = posiciones_validas[i]
+            tipo = random.choice(tipos)
+            traps_lista.append((x, y, tipo))
+
+        self.trap_manager = TrapManager(traps_lista)
+>>>>>>> Stashed changes
 
     def _generate_transition_room(self):
         """Genera una sala del tamaño normal (20x15) con características especiales"""
