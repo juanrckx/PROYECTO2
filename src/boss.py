@@ -11,7 +11,7 @@ class Boss:
         self.rect = pygame.Rect(x, y, 128, 128)
         self.health = 200
         self.max_health = 200
-        self.base_speed = 2.0
+        self.base_speed = 1.0
         self.current_speed = 0.0
         self.color = (200, 0, 0)
 

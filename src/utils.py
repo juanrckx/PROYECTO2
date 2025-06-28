@@ -4,7 +4,6 @@ import os
 import pygame
 from enum import Enum
 
-from button import Button
 
 
 def load_fonts(size=20):
@@ -86,8 +85,6 @@ class ScrollingBackground:
         surface.blit(self.image, (self.scroll, 0))
         surface.blit(self.image, (self.scroll + self.width, 0))
 
-import os
-from datetime import datetime
 
 class ScoreManager:
     def __init__(self, filename="highscores.txt", max_scores=10):
@@ -111,7 +108,6 @@ class ScoreManager:
             # Si el archivo no existe, lo crea vacío
             open(self.filename, 'w').close()
         except Exception as e:
-            print(f"Error al cargar puntajes: {e}")
             # Si hay otro error, inicializa con lista vacía
             self.scores = []
 
@@ -297,7 +293,7 @@ class ScrollableInfoScreen:
         info_text = [
             "DESARROLLADOR:",
             "Nombre: Juan José Rodríguez Chaves",
-            "Carné: 2025094370]",
+            "Carné: 2025094370",
             "Institución: Tecnológico de Costa Rica (TEC)",
             "Carrera: Ingeniería en Computadores",
             "Curso: Introducción a la Programación",

@@ -87,7 +87,6 @@ class Bomb:
             surface.blit(frame, self.rect)
         else:
             # Debug: verificar si hay rectángulos
-            print(f"Dibujando explosión. Rects: {len(self.explosion_rects)}, Frames: {len(self.explosion_frames)}")
 
             if not self.explosion_rects or not self.explosion_frames:
                 return

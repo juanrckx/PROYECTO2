@@ -81,6 +81,9 @@ class Game:
         self.current_level_index = 0
         self.player = None
         self.score = 0
+        self.score_multiplier = 1.0
+        self.combo_counter = 0
+        self.last_score_time = 0
         self.start_time = 0
         self.background = ScrollingBackground("assets/textures/bg/background.png")
 
@@ -122,10 +125,10 @@ class Game:
 
         # Textos descriptivos de personajes
         self.character_descriptions = [
-            ["Vida: 3", "Velocidad: 3", "Bombas: 3"],
-            ["Vida: 5", "Velocidad: 2", "Bombas: 2"],
-            ["Vida: 2", "Velocidad: 4", "Bombas: 4"],
-            ["Vida: 2", "Velocidad: 2", "Bombas: 2"]
+            ["Vida: 5", "Velocidad: 4", "Bombas: 10"],
+            ["Vida: 7", "Velocidad: 3", "Bombas: 8"],
+            ["Vida: 3", "Velocidad: 5", "Bombas: 15"],
+            ["Vida: 3", "Velocidad: 4", "Bombas: 10"]
         ]
 
         self.item_icons = {
@@ -172,6 +175,28 @@ class Game:
 
 
         self.frozen_enemies = False  # Para control global
+        self.level_start_time = 0
+
+
+
+    def add_score(self, amount, combo=False):
+        """Añade puntos al score con posible combo"""
+        now = pygame.time.get_ticks()
+
+        # Lógica de combo
+        if combo:
+            if now - self.last_score_time < 2000:  # 2 segundos para combo
+                self.combo_counter += 1
+                self.score_multiplier = min(3.0, 1.0 + self.combo_counter * 0.2)
+            else:
+                self.combo_counter = 0
+                self.score_multiplier = 1.0
+        else:
+            self.combo_counter = 0
+            self.score_multiplier = 1.0
+
+        self.last_score_time = now
+        self.score += int(amount * self.score_multiplier)
 
     def load_music(self):
         """Carga todos los archivos de música"""
@@ -192,16 +217,17 @@ class Game:
     def start_game(self, character_type):
         self.current_level_index = 0
         current_level = self.levels[self.current_level_index]
+        self.level_start_time = pygame.time.get_ticks()
 
         # Crear jugador según el tipo seleccionado
         if character_type == 0:  # Bomber
-            self.player = Player(1, 1, 99, 4, BLUE, 51, 0,  self )
+            self.player = Player(1, 1, 5, 4, BLUE, 10, 0,  self )
         elif character_type == 1:  # Tanky
-            self.player = Player(1, 1, 5, 3, GREEN, 33, 1,  self)
+            self.player = Player(1, 1, 7, 3, GREEN, 8, 1,  self)
         elif character_type == 2:  # Pyro
-            self.player = Player(1, 1, 2, 5, RED, 8, 2,  self)
+            self.player = Player(1, 1, 3, 5, RED, 15, 2,  self)
         elif character_type == 3: #Cleric
-            self.player = Player(1, 1, 2, 4, WHITE, 4, 3,  self)
+            self.player = Player(1, 1, 3, 4, WHITE, 10, 3,  self)
 
 
 
@@ -252,6 +278,7 @@ class Game:
         self._clear_temporary_effects()
         current_level.generate_level()
         current_level.ensure_starting_position()
+        self.player.reset_item_effects()
 
         return True
 
@@ -281,7 +308,6 @@ class Game:
         }
         self.frozen_enemies = False
         self.player.explosion_range = self.player.base_explosion_range
-        self.player.weapon.damage = self.player.weapon.base.damage
         self.player.weapon.speed = 10
         self.player.weapon.damage = self.player.weapon.base_damage
 
@@ -396,19 +422,31 @@ class Game:
                 if not Difficulty.TRANSITION_ROOM:
                     self.levels[self.current_level_index].enemies[0].can_attack = True
 
+            if event.type == pygame.MOUSEMOTION:
+                # Actualizar estado hover solo en estados relevantes
+                if self.state == GameState.MENU:
+                    self.start_button.check_hover(mouse_pos)
+                    self.settings_button.check_hover(mouse_pos)
+                    self.records_button.check_hover(mouse_pos)
+                    self.info_button.check_hover(mouse_pos)
+                elif self.state == GameState.CHARACTER_SELECT:
+                    for button in self.character_buttons:
+                        button.check_hover(mouse_pos)
+
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_click = True
                 if event.button == 1 and self.state == GameState.MENU:
                     if self.state == GameState.MENU:
                         if self.start_button.is_clicked(mouse_pos, mouse_click):
                             self.state = GameState.CHARACTER_SELECT
-                            
+
                         elif self.settings_button.is_clicked(mouse_pos, mouse_click):
                             self.state = GameState.SETTINGS
-                            
+
                         elif self.records_button.is_clicked(mouse_pos, mouse_click):
                             self.state = GameState.HIGHSCORES
-                        
+
                         elif self.info_button.is_clicked(mouse_pos, mouse_click):
                             self.state = GameState.INFO
 
@@ -456,7 +494,7 @@ class Game:
                 if self.state == GameState.GAME and event.key == pygame.K_SPACE:
                     self.player.activate_powerup()
                 elif event.type == pygame.USEREVENT + 10:
-                    self.player.active_effects["bomb_inmune"] = False
+                    self.player.active_effects["bomb_immune"] = False
 
                 if self.state == GameState.GAME and event.key == pygame.K_e and self.player.can_place_bombs:
                     self.player.player_place_bomb()
@@ -469,8 +507,7 @@ class Game:
                 pygame.time.set_timer(pygame.USEREVENT + 50, 0)  # Cancelar el evento repetido
 
 
-        if self.state != GameState.MENU:
-            self.start_button.check_hover(mouse_pos)
+
 
 
         keys = pygame.key.get_pressed()
@@ -486,10 +523,6 @@ class Game:
 
 
         # Manejo de botones según el estado del juego
-        if self.state == GameState.MENU:
-            self.start_button.check_hover(mouse_pos)
-            if self.start_button.is_clicked(mouse_pos, mouse_click):
-                self.state = GameState.CHARACTER_SELECT
 
         elif self.state == GameState.CHARACTER_SELECT:
             for i, button in enumerate(self.character_buttons):
@@ -542,6 +575,10 @@ class Game:
 
 
         for enemy in current_level.enemies[:]:
+            if enemy.state == "dead" and not getattr(enemy, 'score_counted', False):
+                base_score = 50 * (self.current_level_index + 1)
+                self.add_score(base_score, combo=True)
+                enemy.score_counted = True
             if isinstance(enemy, Boss):  # Comportamiento especial para el jefe
                 enemy.update(
                     player=self.player,
@@ -559,6 +596,15 @@ class Game:
             if bomb.update(current_level):
                 current_level.check_bomb_collisions(bomb, self.player)
                 self.player.bombs.remove(bomb)
+
+        for powerup in current_level.powerups[:]:
+            if self.player.hitbox.colliderect(powerup.rect):
+                self.add_score(20)
+
+        for block in current_level.map[:]:
+            if block.destroyed and not getattr(block, 'score_counted', False):
+                self.add_score(10)
+                block.score_counted = True
 
 
         for enemy in current_level.enemies:
@@ -589,7 +635,8 @@ class Game:
                     not current_level.key.collected and
                     self.player.hitbox.colliderect(current_level.key.rect)):
 
-                    self.score += 100
+                    time_bonus = max(0, 1000 - (pygame.time.get_ticks() - self.level_start_time) // 100)
+                    self.add_score(time_bonus)
                     current_level.key.collected = True
                     self.player.key_collected = True
                     current_level.open_door()
@@ -867,6 +914,8 @@ class Game:
 
         if self.current_music != 'interlevel':
             self.play_music('interlevel')
+
+
 
     Powerup.load_sprites()
 

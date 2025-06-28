@@ -16,6 +16,7 @@ class Player:
         )
         self.lives = lives
         self.speed = speed  # Aumentada la velocidad base
+        self.base_speed = speed
         self.color = color
         self.animations = self.load_character_animations(character_type)
         self.current_animation = "idle"
@@ -47,16 +48,18 @@ class Player:
 
         self.weapon = Weapon(self)
         self.damage = 1
-        self.item_effects = {"speed_boost": False,
-                            "homing_bullets": False,
-                            "shotgun": True if character_type == 1 else False,
-                            "bullet_heal": True if character_type == 3 else False,
-                            "has_shield": True if character_type == 2 else False,
-                            "double_damage": False,
-                            "revive_chance": False,
-                            "indestructible_bomb": False}
         self.permanent_items = []
         self.item_surfaces = self._load_item_surfaces()
+        self.item_effects = {"speed_boost": False,
+                             "homing_bullets": False,
+                             "shotgun": True if character_type == 1 else False,
+                             "bullet_heal": True if character_type == 3 else False,
+                             "has_shield": True if character_type == 2 else False,
+                             "double_damage": False,
+                             "revive_chance": False,
+                             "indestructible_bomb": False}
+        self._setup_character_items(character_type)
+
         self.bullet_heal_counter = 0
         self.base_speed = speed
         self.revive_chance = 0
@@ -66,35 +69,18 @@ class Player:
         self.facing = "down"
         self.load_character_animations(character_type)
 
-    def _initialize_character_item(self, character_type):
-        starter_items = {
-            1: ["shotgun"],  # Tanky
-            2: ["has_shield"],  # Pyro
-            3: ["bullet_heal"]  # Cleric
-        }
+    def _get_character_damage(self, character_type):
+        return {0: 1,
+                1: 1,
+                2: 2,
+                3: 1}[character_type]
 
-        # Inicializar permanent_items si no existe
-        if not hasattr(self, 'permanent_items'):
-            self.permanent_items = []
-
+    def _setup_character_items(self, character_type):
+        starter_items = {1: ["shotgun"],
+                         2: ["has_shield"],
+                         3: ["bullet_heal"]}
         for item in starter_items.get(character_type, []):
-            # Usar tu función existente _add_permanent_item
-            self._add_permanent_item(item)
-
-            # Activar el efecto
-            self.item_effects[item] = True
             self.apply_item_effect(item)
-
-    def _add_permanent_item(self, effect_name):
-        """Añade un item permanente y aplica su efecto"""
-        if effect_name not in [item['effect'] for item in self.permanent_items]:
-            # Usar get() para manejar items sin sprite definido
-            surface = self.item_surfaces.get(effect_name, self._create_fallback_icon(effect_name))
-
-            self.permanent_items.append({
-                'effect': effect_name,
-                'surface': surface
-            })
 
     def _load_item_surfaces(self):
         """Carga las superficies de los items"""
@@ -109,9 +95,9 @@ class Player:
                             "indestructible_bomb": "the_tower.png"}
         surfaces = {}
         for effect, img in items.items():
-            path = f"assets/textures/items/{img}"
-            surf = pygame.image.load(path).convert_alpha()
-            surfaces[effect] = pygame.transform.scale(surf, (32, 32))
+                path = f"assets/textures/items/{img}"
+                surf = pygame.image.load(path).convert_alpha()
+                surfaces[effect] = pygame.transform.scale(surf, (32, 32))
         return surfaces
 
 
@@ -123,68 +109,59 @@ class Player:
             "walk": {"down": [], "up": [], "left": [], "right": []}}
 
 
-        try:
-            character_sprites = {
-                0: "bomber.png",
-                1: "tanky.png",
-                2: "pyro.png",
-                3: "cleric.png"
-            }
+        character_sprites = {
+            0: "bomber.png",
+            1: "tanky.png",
+            2: "pyro.png",
+            3: "cleric.png"
+        }
 
-            if character_type not in character_sprites:
-                raise ValueError(f"Tipo de personaje {character_type} no válido")
+        if character_type not in character_sprites:
+            raise ValueError(f"Tipo de personaje {character_type} no válido")
 
-            sheet_path = f"assets/textures/characters/{character_sprites[character_type]}"
+        sheet_path = f"assets/textures/characters/{character_sprites[character_type]}"
 
-            # 2. Cargar la imagen
-            sheet = pygame.image.load(sheet_path).convert_alpha()
-            print(f"Spritesheet cargada: {sheet_path} ({sheet.get_width()}x{sheet.get_height()})")
+        # 2. Cargar la imagen
+        sheet = pygame.image.load(sheet_path).convert_alpha()
 
-            # 3. Calcular dimensiones de cada frame
-            cols = 3  # 3 columnas (frames de animación)
-            rows = 4  # 3 filas (direcciones)
-            frame_width = sheet.get_width() // cols
-            frame_height = sheet.get_height() // rows
+        # 3. Calcular dimensiones de cada frame
+        cols = 3  # 3 columnas (frames de animación)
+        rows = 4  # 3 filas (direcciones)
+        frame_width = sheet.get_width() // cols
+        frame_height = sheet.get_height() // rows
 
-            direction_rows = {
-                0: "down",
-                1: "left",
-                2: "right",
-                3: "up"
-            }
+        direction_rows = {
+            0: "down",
+            1: "left",
+            2: "right",
+            3: "up"
+        }
 
-            # 4. Asignar frames a las animaciones
-            for row in range(rows):
-                direction = direction_rows[row]
-                for col in range(cols):
-                    # Extraer frame
-                    frame = pygame.Surface((frame_width, frame_height), pygame.SRCALPHA)
-                    frame.blit(sheet, (0, 0), (col * frame_width, row * frame_height, frame_width, frame_height))
-                    scaled_frame = pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE))
+        # 4. Asignar frames a las animaciones
+        for row in range(rows):
+            direction = direction_rows[row]
+            for col in range(cols):
+                # Extraer frame
+                frame = pygame.Surface((frame_width, frame_height), pygame.SRCALPHA)
+                frame.blit(sheet, (0, 0), (col * frame_width, row * frame_height, frame_width, frame_height))
+                scaled_frame = pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE))
 
-                    # Para walk: usar los 3 frames
-                    animations["walk"][direction].append(scaled_frame)
+                # Para walk: usar los 3 frames
+                animations["walk"][direction].append(scaled_frame)
 
-                    # Para idle: usar el frame central (col=1)
-                    if col == 1:
-                        animations["idle"][direction].append(scaled_frame)
+                # Para idle: usar el frame central (col=1)
+                if col == 1:
+                    animations["idle"][direction].append(scaled_frame)
 
-                        # Opcional: crear 2-3 frames de idle con variaciones sutiles
-                        for i in range(2):
-                            modified_frame = scaled_frame.copy()
-                            # Pequeña modificación para frame alternativo
-                            if i == 0:
-                                pygame.draw.rect(modified_frame, (0, 0, 0, 10), (0, 0, TILE_SIZE, 1))  # Sombra superior
-                            animations["idle"][direction].append(modified_frame)
+                    # Opcional: crear 2-3 frames de idle con variaciones sutiles
+                    for i in range(2):
+                        modified_frame = scaled_frame.copy()
+                        # Pequeña modificación para frame alternativo
+                        if i == 0:
+                            pygame.draw.rect(modified_frame, (0, 0, 0, 10), (0, 0, TILE_SIZE, 1))  # Sombra superior
+                        animations["idle"][direction].append(modified_frame)
 
-        except Exception as e:
-            print(f"Error cargando animaciones: {e}")
-            # Crear fallback
-            fallback_frame = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
-            pygame.draw.rect(fallback_frame, self.color, (0, 0, TILE_SIZE, TILE_SIZE))
-            for anim in animations:
-                for direction in animations[anim]:
-                    animations[anim][direction] = [fallback_frame]
+
 
         return animations
 
@@ -284,11 +261,22 @@ class Player:
             self.item_effects["indestructible_bomb"] = True
 
     def reset_item_effects(self):
-                # Restablecer todos los efectos de items
-        if self.item_effects["speed_boost"]:
-            self.speed = self.base_speed
+        permanent_effects = [item['effect'] for item in self.permanent_items]
 
+        # Resetear todos los efectos primero
+        self.speed = self.base_speed
+        self.weapon.damage = self.weapon.base_damage
+        self.enemy_damage_multiplier = 1.0
+        self.item_effects = {k: False for k in self.item_effects}
 
+        # Reaplicar efectos permanentes
+        for effect in permanent_effects:
+            self.item_effects[effect] = True
+            if effect == "speed_boost":
+                self.speed = self.base_speed + 5
+            elif effect == "double_damage":
+                self.damage += 5
+                self.enemy_damage_multiplier = 2.0
         self.item_effects = {k: False for k in self.item_effects}
         self.item_effects["revive_chance"] = False
 
@@ -398,32 +386,38 @@ class Player:
             self.bombs.append(Bomb(grid_x * TILE_SIZE, grid_y * TILE_SIZE, self, False, self.base_explosion_range, 3))
             self.available_bombs -= 1  # Consumir bomba
 
-    def take_damage(self, amount):
-        # Verificar protección contra daño
+    def take_damage(self, amount, is_bomb_damage=False):
+        """
+        Args:
+            amount: Cantidad de daño
+            is_bomb_damage: Si el daño viene de una explosión (default False)
+        """
+        # 1. Verificar inmunidad general primero
         if self.invincible:
             return False
 
+        # 2. Caso especial: inmunidad solo a bombas
+        if is_bomb_damage and self.active_effects.get("bomb_immune", False):
+            return False
+
+        # 3. Escudo (protege contra cualquier daño)
         if self.item_effects.get("has_shield", False):
             self.item_effects["has_shield"] = False
             self.invincible = True
             self.invincible_frames = self.invincible_duration
             return False
 
-        if self.active_effects.get("bomb_immune", False):
-            return False
-
-        # Aplicar daño
+        # 4. Aplicar daño
         self.lives -= amount
         self.invincible = True
         self.invincible_frames = self.invincible_duration
 
-        # Manejar muerte
+        # 5. Verificar muerte
         if self.lives <= 0:
-            revive_chance = self.item_effects.get("revive_chance", 0)
-            if random.random() < revive_chance:
+            if random.random() < self.item_effects.get("revive_chance", 0):
                 self.lives = 1
                 return False
-            return True  # Jugador murió
+            return True
         return False
 
 

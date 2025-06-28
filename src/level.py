@@ -319,7 +319,7 @@ class Level:
                 if not player_hit and player.hitbox.colliderect(
                         exp_rect) and not player.invincible and not player.active_effects.get("bomb_immune", False):
                     player_hit = True
-                    player.take_damage(amount=1)
+                    player.take_damage(amount=1, is_bomb_damage=True)
                     break
 
             for enemy in self.enemies[:]:  # Usamos copia para poder modificar la lista
