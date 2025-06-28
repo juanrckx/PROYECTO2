@@ -1,5 +1,4 @@
 import os
-import random
 
 import pygame
 from enum import Enum

@@ -54,7 +54,7 @@ class Player:
                             "has_shield": False,
                             "double_damage": False,
                             "revive_chance": False,
-                            "indestructible_bomb": False}
+                            "indestructible_bomb": True}
         self.permanent_items = []
         self.item_surfaces = self._load_item_surfaces()
         self.bullet_heal_counter = 0

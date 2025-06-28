@@ -1,7 +1,7 @@
 import pygame
 import random
 
-from src.boss import Boss
+from boss import Boss
 from powerups import Powerup
 from utils import Difficulty, TILE_SIZE, PowerupType, WIDTH, HEIGHT
 from enemy import Enemy
@@ -296,6 +296,14 @@ class Level:
         player_hit = False
         if bomb.exploded:
             for block in self.map[:]:
+                if hasattr(player, 'item_effects') and player.item_effects.get("indestructible_bomb"):
+                    for exp_rect in bomb.explosion_rects:
+                        if block.rect.colliderect(exp_rect):
+                            if exp_rect.x == 0 or exp_rect.x == WIDTH - TILE_SIZE or exp_rect.y == 0 or exp_rect.y == HEIGHT - TILE_SIZE:
+                                continue
+                            block.destroyed = True
+                            self.map.remove(block)
+
                 if block.destructible and not block.destroyed:
                     for exp_rect in bomb.explosion_rects:
                         if block.rect.colliderect(exp_rect):

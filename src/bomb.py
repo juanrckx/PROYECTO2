@@ -1,3 +1,5 @@
+import os
+
 import pygame
 from utils import  TILE_SIZE, FPS
 
@@ -12,9 +14,44 @@ class Bomb:
         self.player = player
         self.is_super = is_super
 
+        self.bombs_frames = self._load_gif_frames("bomb")
+        self.current_frame = 0
+        self.bomb_animation_speed = 0.1
+        self.last_update = pygame.time.get_ticks()
 
+
+    def _load_gif_frames(self, path):
+        frames = []
+        folder_path = "assets/textures/materials/bomb/"
+
+        try:
+            frame_files = sorted(
+                [f for f in os.listdir(folder_path) if f.startswith("frame_")],
+                key=lambda x: int(x.split('_')[1].split('.')[0])
+            )
+
+            for file in frame_files:
+                frame = pygame.image.load(folder_path + file).convert_alpha()
+                frame = pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE))
+                frames.append(frame)
+
+        except Exception as e:
+            print(f"Error cargando animación {path}: {e}")
+            # Fallback: círculos de colores
+            colors = [(255, 0, 0), (200, 0, 0)] if path == "bomb" else [(255, 165, 0), (255, 100, 0)]
+            for color in colors:
+                surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+                pygame.draw.circle(surf, color, (TILE_SIZE // 2, TILE_SIZE // 2), TILE_SIZE // 2 - 2)
+                frames.append(surf)
+
+        return frames
 
     def update(self, current_level = None):
+        now = pygame.time.get_ticks()
+        if now - self.last_update > self.bomb_animation_speed * 1000:  # Convierte segundos a milisegundos
+            self.last_update = now
+            self.current_frame = (self.current_frame + 1) % len(self.bombs_frames)
+
         if not self.exploded:
             self.timer -= 1
             if self.timer <= 0 and current_level is not None:
@@ -44,7 +81,7 @@ class Bomb:
                 )
 
                 # Solo verificar colisión si NO tenemos indestructible_bomb
-                if hasattr(player, 'item_effects') and player.item_effects.get("indestructible_bomb"):
+                if hasattr(player, 'item_effects') and not player.item_effects.get("indestructible_bomb"):
                     if any(not block.destructible and block.rect.colliderect(new_rect)
                            for block in current_level.map):
                         break
@@ -61,7 +98,16 @@ class Bomb:
 
     def draw(self, surface):
         if not self.exploded:
+            # Dibujar frame actual
+            frame = self.bombs_frames[self.current_frame]
+            surface.blit(frame, self.rect)
+
+            # Opcional: aura para super bombas
             if self.is_super:
-                pygame.draw.circle(surface, (255, 255, 0), self.rect.center, self.rect.width // 2 + 5, 2)
-            else:
-                pygame.draw.rect(surface, (255, 0, 0), self.rect)
+                pygame.draw.circle(
+                    surface,
+                    (255, 255, 0, 150),  # Amarillo semitransparente
+                    self.rect.center,
+                    self.rect.width // 2 + 5,
+                    2  # Grosor del borde
+                )
