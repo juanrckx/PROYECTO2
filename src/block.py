@@ -20,3 +20,14 @@ class Block:
         if not self.destroyed:
             surface.blit(self.texture, self.rect)
 
+class Trap:
+    def __init__(self, x, y, type):
+        self.rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+        self.type = type  # "fuego", "veneno", "hielo"
+        self.texture = pygame.image.load(f"assets/textures/traps/{type}.png").convert_alpha()
+        self.texture = pygame.transform.scale(self.texture, (TILE_SIZE, TILE_SIZE))
+
+    def draw(self, surface):
+        surface.blit(self.texture, self.rect)
+
+
