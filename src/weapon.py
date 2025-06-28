@@ -132,16 +132,18 @@ class Bullet:
             self._home_to_target()
 
         for enemy in current_level.enemies[:]:
-            if enemy != "dead" and self.rect.colliderect(enemy.rect):
-                enemy.take_damage(self.damage)
+            if hasattr(enemy, 'state') and enemy.state != "dead" and self.rect.colliderect(enemy.rect):
+                if enemy != "dead" and self.rect.colliderect(enemy.rect):
+                    enemy.take_damage(self.damage)
 
 
-                if self.owner.item_effects["bullet_heal"]:
-                    self.owner.bullet_heal_counter += 1
-                    if self.owner.bullet_heal_counter >= 20:
-                        self.owner.lives = min(self.owner.lives + 1, 5)
-                        self.owner.bullet_heal_counter = 0
-                return True
+
+                    if self.owner.item_effects["bullet_heal"]:
+                        self.owner.bullet_heal_counter += 1
+                        if self.owner.bullet_heal_counter >= 20:
+                            self.owner.lives = min(self.owner.lives + 1, 5)
+                            self.owner.bullet_heal_counter = 0
+                    return True
 
         for block in current_level.map:
             if not block.destroyed and self.rect.colliderect(block.rect):

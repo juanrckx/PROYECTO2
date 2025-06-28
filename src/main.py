@@ -40,12 +40,9 @@ Musica
 
 #TODO
 ARREGLAR BOMBAS
-ARREGLAR ENEMIGOS QUE NO SE ELIMINAN DEL MAPA
 IMPLEMENTAR A CLERIC
 AÑADIR OMITIR A ITEM
-REVISAR ITEMS Y SUMAS
-BLOQUES DESTRUCTIBLES ENCIERRAN AL JUGADOR
-
+ARREGLAR THE TOWER
 
 
 '''
@@ -152,24 +149,50 @@ class Game:
         current_level.generate_level()
         self.ensure_starting_position()
 
-
     def ensure_starting_position(self):
-        """Garantiza que el área inicial esté despejada"""
+        """Limpia solo el área de spawn (3x3 tiles) pero preserva TODOS los bloques en bordes"""
         current_level = self.levels[self.current_level_index]
+
+        # 1. Obtener spawn point (con valor por defecto (1,1) si no existe)
+        spawn_x, spawn_y = getattr(current_level, 'player_spawn', (1, 1))
+
+        # 2. Definir zona segura relativa al spawn (3x3 tiles)
         safe_zone = [
-            (1, 1), (1, 2), (2, 1), (2, 2),
-            (1, 3), (3, 1), (2, 3), (3, 2)
+            (spawn_x + dx, spawn_y + dy)
+            for dx in [-1, 0, 1]
+            for dy in [-1, 0, 1]
         ]
 
-        # Eliminar bloques en zona segura
+        # 3. Filtrar bloques: Eliminar solo los que están en la zona segura Y NO están en bordes
         current_level.map = [
             b for b in current_level.map
-            if not any(
-                b.rect.x == x * TILE_SIZE and
-                b.rect.y == y * TILE_SIZE
-                for x, y in safe_zone
+            if not (
+                    any(  # Está en zona segura
+                        (b.rect.x // TILE_SIZE == x) and
+                        (b.rect.y // TILE_SIZE == y)
+                        for x, y in safe_zone
+                    )
+                    and not (  # Y NO está en ningún borde
+                    b.rect.x == 0 or
+                    b.rect.y == 0 or
+                    b.rect.x == (20 - TILE_SIZE) or
+                    b.rect.y == (15 - TILE_SIZE)
+            )
             )
         ]
+
+        # 4. Debug: Verificar que el spawn está despejado
+        spawn_rect = pygame.Rect(
+            spawn_x * TILE_SIZE,
+            spawn_y * TILE_SIZE,
+            TILE_SIZE,
+            TILE_SIZE
+        )
+
+        remaining_blocks = [b for b in current_level.map if spawn_rect.colliderect(b.rect)]
+        if remaining_blocks:
+            print(
+                f"¡Atención! Bloques en spawn: {[(b.rect.x // TILE_SIZE, b.rect.y // TILE_SIZE) for b in remaining_blocks]}")
 
     def between_levels(self):
         """Transición al siguiente nivel con reinicio de estados"""
@@ -205,6 +228,8 @@ class Game:
 
         # 4. Resetear propiedades del jugador
         self._reset_player_for_new_level()
+        self.ensure_starting_position()
+
 
         # 5. Limpiar efectos temporales
         self._clear_temporary_effects()
@@ -570,6 +595,7 @@ class Game:
 
 
         self.player.draw(window)
+        self.player.draw_items(window)
         # Dibujar HUD
         lives_text = DEFAULT_FONT.render(f"Vidas: {self.player.lives}", True, WHITE)
         score_text = DEFAULT_FONT.render(f"Puntos: {self.score}", True, WHITE)

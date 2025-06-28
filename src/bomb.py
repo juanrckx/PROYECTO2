@@ -44,7 +44,7 @@ class Bomb:
                 )
 
                 # Solo verificar colisión si NO tenemos indestructible_bomb
-                if hasattr(player, 'item_effects') and not player.item_effects.get("indestructible_bomb"):
+                if hasattr(player, 'item_effects') and player.item_effects.get("indestructible_bomb"):
                     if any(not block.destructible and block.rect.colliderect(new_rect)
                            for block in current_level.map):
                         break

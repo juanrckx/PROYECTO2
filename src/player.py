@@ -1,7 +1,7 @@
 import random
 
 import pygame
-from utils import TILE_SIZE, PowerupType, WIDTH, HEIGHT, Difficulty, MAP_WIDTH, MAP_HEIGHT
+from utils import TILE_SIZE, PowerupType, WIDTH, HEIGHT, Difficulty, MAP_WIDTH, MAP_HEIGHT, WHITE, DEFAULT_FONT
 from bomb import Bomb
 from weapon import Weapon
 
@@ -55,6 +55,8 @@ class Player:
                             "double_damage": False,
                             "revive_chance": False,
                             "indestructible_bomb": False}
+        self.permanent_items = []
+        self.item_surfaces = self._load_item_surfaces()
         self.bullet_heal_counter = 0
         self.base_speed = speed
         self.revive_chance = 0
@@ -64,6 +66,34 @@ class Player:
         self.facing = "down"
         self.load_character_animations(character_type)
 
+    def _load_item_surfaces(self):
+        """Carga las superficies de los items"""
+
+        items = {"speed_boost": "the_fool.png",
+                            "homing_bullets": "the_magician.png",
+                            "shotgun": "the_high_priestess.png",
+                            "bullet_heal": "the_lovers.png",
+                            "has_shield": "the_chariot.png",
+                            "double_damage": "the_devil.png",
+                            "revive_chance": "the_sun.png",
+                            "indestructible_bomb": "the_tower.png"}
+        surfaces = {}
+        for effect, img in items.items():
+            try:
+                path = f"assets/textures/items/{img}"
+                surf = pygame.image.load(path).convert_alpha()
+                surfaces[effect] = pygame.transform.scale(surf, (32, 32))
+            except:
+                surfaces[effect] = self._create_fallback_icon(effect)
+        return surfaces
+
+    def _create_fallback_icon(self, effect):
+        """Crea un ícono simple para efectos sin imagen"""
+        surf = pygame.Surface((32, 32), pygame.SRCALPHA)
+        pygame.draw.rect(surf, (100, 100, 255), (0, 0, 32, 32), border_radius=4)
+        text = DEFAULT_FONT.render(effect[:3], True, WHITE)
+        surf.blit(text, (16 - text.get_width() // 2, 16 - text.get_height() // 2))
+        return surf
 
 
     def load_character_animations(self, character_type):
@@ -197,6 +227,11 @@ class Player:
         self.stored_powerup = None
 
     def apply_item_effect(self, effect_name):
+        if effect_name not in [item['effect'] for item in self.permanent_items]:
+            self.permanent_items.append({
+                "effect": effect_name,
+                "surface": self.item_surfaces.get(effect_name)
+            })
         # Resetear efectos previos si es necesario
         self.reset_item_effects()
 
@@ -233,9 +268,6 @@ class Player:
         if self.item_effects["speed_boost"]:
             self.speed = self.base_speed
 
-        if self.item_effects["double_damage"]:
-            self.damage -= 5
-            self.enemy_damage_multiplier = 1.0
 
         self.item_effects = {k: False for k in self.item_effects}
         self.item_effects["revive_chance"] = False
@@ -432,6 +464,23 @@ class Player:
                 return new_x, new_y
 
         return self.rect.x, self.rect.y  # Si no encuentra, mantiene posición (poco probable)
+
+    def draw_items(self, surface):
+        """Dibuja los ítems activos en la esquina superior derecha"""
+        x_pos = WIDTH - 40
+        y_pos = 10
+
+        # Dibujar título
+        title = DEFAULT_FONT.render("Ítems:", True, WHITE)
+        surface.blit(title, (x_pos - 100, y_pos))
+
+        # Dibujar ítems
+        for i, item in enumerate(self.permanent_items):
+            if item['surface']:
+                surface.blit(item['surface'], (x_pos, y_pos + 30 + i * 40))
+
+
+
 
     def draw(self, surface):
         if not self.visible:
