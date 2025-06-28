@@ -1,8 +1,6 @@
 import math
 
 import pygame
-
-from boss import Boss
 from utils import RED, WIDTH, HEIGHT, Difficulty
 
 
@@ -17,7 +15,7 @@ class Weapon:
         self.max_bullets = 10
 
     def apply_damage_boost(self, amount):
-        self.damage += self.base_damage + amount
+        self.damage += amount
 
     def shoot(self, direction):
         if self.cooldown <= 0 and len(self.bullets) < self.max_bullets:
@@ -141,7 +139,7 @@ class Bullet:
                     if self.owner.item_effects["bullet_heal"]:
                         self.owner.bullet_heal_counter += 1
                         if self.owner.bullet_heal_counter >= 20:
-                            self.owner.lives = min(self.owner.lives + 1, 5)
+                            self.owner.lives += 1
                             self.owner.bullet_heal_counter = 0
                     return True
 

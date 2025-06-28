@@ -15,34 +15,27 @@ class Bomb:
         self.is_super = is_super
 
         self.bombs_frames = self._load_gif_frames("bomb")
+        self.explosion_frames = self._load_gif_frames("explosion")
         self.current_frame = 0
         self.bomb_animation_speed = 0.1
+        self.explosion_animation_speed = 0.05
         self.last_update = pygame.time.get_ticks()
 
-
-    def _load_gif_frames(self, path):
+    def _load_gif_frames(self, frame_type):
         frames = []
         folder_path = "assets/textures/materials/bomb/"
 
-        try:
-            frame_files = sorted(
-                [f for f in os.listdir(folder_path) if f.startswith("frame_")],
-                key=lambda x: int(x.split('_')[1].split('.')[0])
-            )
+        prefix = f"{frame_type}_"
+        frame_files = sorted(
+            [f for f in os.listdir(folder_path) if f.startswith(prefix)],
+            key=lambda x: int(x.split('_')[1].split('.')[0])
+        )
 
-            for file in frame_files:
-                frame = pygame.image.load(folder_path + file).convert_alpha()
+        for file in frame_files:
+                frame = pygame.image.load(os.path.join(folder_path, file)).convert_alpha()
                 frame = pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE))
                 frames.append(frame)
 
-        except Exception as e:
-            print(f"Error cargando animación {path}: {e}")
-            # Fallback: círculos de colores
-            colors = [(255, 0, 0), (200, 0, 0)] if path == "bomb" else [(255, 165, 0), (255, 100, 0)]
-            for color in colors:
-                surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
-                pygame.draw.circle(surf, color, (TILE_SIZE // 2, TILE_SIZE // 2), TILE_SIZE // 2 - 2)
-                frames.append(surf)
 
         return frames
 
@@ -56,7 +49,7 @@ class Bomb:
             self.timer -= 1
             if self.timer <= 0 and current_level is not None:
                 self.explode(self.player, current_level)
-                return True
+                return False
         else:
             self.explosion_timer -= 1
         return self.explosion_timer <= 0
@@ -65,7 +58,7 @@ class Bomb:
 
     def explode(self, player, current_level):
         self.exploded = True
-        self.explosion_rects = [self.rect]
+        self.explosion_rects = [self.rect.copy()]
 
         # Definir patrones de explosión
         base_pattern = [(1, 0), (-1, 0), (0, 1), (0, -1)]
@@ -88,26 +81,30 @@ class Bomb:
 
                 self.explosion_rects.append(new_rect)
 
-
-
-
-
-
-
-
-
     def draw(self, surface):
         if not self.exploded:
-            # Dibujar frame actual
             frame = self.bombs_frames[self.current_frame]
             surface.blit(frame, self.rect)
+        else:
+            # Debug: verificar si hay rectángulos
+            print(f"Dibujando explosión. Rects: {len(self.explosion_rects)}, Frames: {len(self.explosion_frames)}")
 
-            # Opcional: aura para super bombas
-            if self.is_super:
-                pygame.draw.circle(
-                    surface,
-                    (255, 255, 0, 150),  # Amarillo semitransparente
-                    self.rect.center,
-                    self.rect.width // 2 + 5,
-                    2  # Grosor del borde
-                )
+            if not self.explosion_rects or not self.explosion_frames:
+                return
+
+            frame_index = min(int((1 - self.explosion_timer / 30) * len(self.explosion_frames)),
+                              len(self.explosion_frames) - 1)
+            explosion_frame = self.explosion_frames[frame_index]
+
+            for exp_rect in self.explosion_rects:
+                # Asegurar que el frame tenga tamaño válido
+                if explosion_frame.get_size() == (0, 0):
+                    print("¡Frame de explosión inválido!")
+                    continue
+
+                try:
+                    scaled_rect = exp_rect.inflate(20, 20)
+                    scaled_frame = pygame.transform.scale(explosion_frame, scaled_rect.size)
+                    surface.blit(scaled_frame, scaled_rect)
+                except:
+                    print("¡Error al dibujar explosión!")

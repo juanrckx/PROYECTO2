@@ -19,7 +19,7 @@ class Enemy:
     def set_attributes(self):
         if self.type == 1:  # Normal
             self.speed = 2  # Aumentada velocidad
-            self.health = 5
+            self.health = 100
             self.color = (255, 0 ,0)
         elif self.type == 2:  # Fast
             self.speed = 4  # Aumentada velocidad
@@ -71,7 +71,6 @@ class Enemy:
         self.health -= amount
         if random.random() <= 0.7 and len(self.powerups) < 5:
             self.powerups.append(Powerup(self.rect.x, self.rect.y))
-        print(self.health)
         if self.health <= 0:
             self.state = "dead"
 

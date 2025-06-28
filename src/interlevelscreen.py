@@ -19,10 +19,10 @@ class InterLevelScreen:
     def _create_buttons(self):
         """Crea y posiciona los botones correctamente"""
         return [
-            Button(100, 200, 200, 50, "+2 Bomba", WHITE, BLACK, font=DEFAULT_FONT),
-            Button(100, 300, 200, 50, "+2 Vida", WHITE, BLACK, font=DEFAULT_FONT),
-            Button(100, 400, 200, 50, "+2 Velocidad", WHITE, BLACK, font=DEFAULT_FONT),
-            Button(100, 500, 200, 50, "+2 Daño", WHITE, BLACK, font=DEFAULT_FONT),
+            Button(100, 200, 200, 50, "+2 Bomba", BLACK, BLACK, font=DEFAULT_FONT),
+            Button(100, 300, 200, 50, "+2 Vida", BLACK, BLACK, font=DEFAULT_FONT),
+            Button(100, 400, 200, 50, "+2 Velocidad", BLACK, BLACK, font=DEFAULT_FONT),
+            Button(100, 500, 200, 50, "+2 Daño", BLACK, BLACK, font=DEFAULT_FONT),
             Button(400, 350, 200, 50, "Ruleta de Items", (255, 215, 0), BLACK, font=DEFAULT_FONT),
             Button(400, 450, 200, 50, "Omitir", (200, 200, 200), BLACK, font=DEFAULT_FONT)
         ]
@@ -48,12 +48,10 @@ class InterLevelScreen:
              "desc": "Tus bombas ahora rompen bloques indestructibles", "image": "the_tower.png"}]
 
         for item in items:
-            try:
-                img_path = os.path.join("assets", "textures", "items", item["image"])
-                item["image_surface"] = pygame.image.load(img_path).convert_alpha()
-                item["image_surface"] = pygame.transform.scale(item["image_surface"], (128, 128))
-            except:
-                item["image_surface"] = self._create_fallback_surface(item["name"])
+            img_path = os.path.join("assets", "textures", "items", item["image"])
+            item["image_surface"] = pygame.image.load(img_path).convert_alpha()
+            item["image_surface"] = pygame.transform.scale(item["image_surface"], (128, 128))
+
 
         return items
 

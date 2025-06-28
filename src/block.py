@@ -9,8 +9,8 @@ class Block:
         self.destroyed = False
 
         if not destructible:
-            self.texture = pygame.Surface((TILE_SIZE, TILE_SIZE))
-            self.texture.fill(GRAY)
+            self.texture = pygame.image.load("assets/textures/materials/block_material.png").convert_alpha()
+            self.texture = pygame.transform.scale(self.texture, (TILE_SIZE, TILE_SIZE))
 
         else:
             self.texture = pygame.image.load("assets/textures/materials/brick_material.png").convert_alpha()
